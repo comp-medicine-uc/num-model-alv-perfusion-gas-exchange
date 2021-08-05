@@ -1,5 +1,5 @@
 '''
-Model file for perfusion and gas exchange simulations.
+Model file for alveolar perfusion and gas exchange simulations.
 
 @author pzuritas
 '''

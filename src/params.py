@@ -1,5 +1,5 @@
 '''
-Parameter declaration file for perfusion and gas exchange model.
+Parameter file for perfusion and gas exchange model.
 
 @author: pzuritas
 '''
