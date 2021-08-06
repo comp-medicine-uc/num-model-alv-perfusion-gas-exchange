@@ -199,11 +199,12 @@ class PerfusionGasExchangeModel():
         else:
             raise ValueError('Gas species in f must be O2 or CO2.')
 
-    def sim_bst(self, final_time, num_steps):
+    def sim_bst(self, final_time, num_steps, hb=True):
         '''Solves the blood-side transport (BST) problem of the model.
         
         final_time: time to simulate in seconds. (float)
         num_steps: number of time steps. (int)
+        hb: toggle effects of hemoglobin. (bool)
         '''
         # Instance parameters
 
@@ -261,7 +262,8 @@ class PerfusionGasExchangeModel():
         G_p_O2 += dt*d_ba_O2/h_ba*self.p_O2*v*ds(3)
         G_p_O2 += dt*inner(self.u*self.p_O2, grad(v))*dx
         G_p_O2 += -dt*inner(self.u*self.p_O2, n)*v*ds(2)
-        G_p_O2 += dt*self.f('O2', self.p_O2, self.c_HbO2, self.c_HbCO2)*v*dx
+        if hb:
+            G_p_O2 += dt*self.f('O2', self.p_O2, self.c_HbO2, self.c_HbCO2)*v*dx
         G_p_O2 += -dt*d_ba_O2/h_ba*p_air_O2*v*ds(3)
         G_p_O2 += -p_O2_nm1*v*dx
 
@@ -270,28 +272,35 @@ class PerfusionGasExchangeModel():
         G_p_CO2 += dt*d_ba_CO2/h_ba*self.p_CO2*w*ds(3)
         G_p_CO2 += dt*inner(self.u*self.p_CO2, grad(w))*dx
         G_p_CO2 += -dt*inner(self.u*self.p_CO2, n)*w*ds(2)
-        G_p_CO2 += dt*self.f('CO2', self.p_CO2, self.c_HbCO2, self.c_HbO2)*w*dx
+        if hb:
+            G_p_CO2 += dt*self.f(
+                'CO2', self.p_CO2, self.c_HbCO2, self.c_HbO2
+            )*w*dx
         G_p_CO2 += -dt*d_ba_CO2/h_ba*p_air_CO2*w*ds(3)
         G_p_CO2 += -p_CO2_nm1*w*dx
 
         G_c_O2 = self.c_HbO2*eta*dx
-        G_c_O2 += dt*inner(self.u*self.c_HbO2, grad(eta))*dx
-        G_c_O2 += -dt*inner(self.u*self.c_HbO2, n)*eta*ds(2)
         G_c_O2 += -c_HbO2_nm1*eta*dx
-        G_c_O2 += -dt*self.g('O2', self.p_O2, self.c_HbO2, self.c_HbCO2)*eta*dx
+        if hb:
+            G_c_O2 += dt*inner(self.u*self.c_HbO2, grad(eta))*dx
+            G_c_O2 += -dt*inner(self.u*self.c_HbO2, n)*eta*ds(2)
+            G_c_O2 += -dt*self.g(
+                'O2', self.p_O2, self.c_HbO2, self.c_HbCO2
+            )*eta*dx
 
         G_c_CO2 = self.c_HbCO2*xi*dx
-        G_c_CO2 += dt*inner(self.u*self.c_HbCO2, grad(xi))*dx
-        G_c_CO2 += -dt*inner(self.u*self.c_HbCO2, n)*xi*ds(2)
         G_c_CO2 += -c_HbCO2_nm1*xi*dx
-        G_c_CO2 += -dt*self.g('CO2', self.p_CO2, self.c_HbCO2, self.c_HbO2)*xi*dx
+        if hb:
+            G_c_CO2 += dt*inner(self.u*self.c_HbCO2, grad(xi))*dx
+            G_c_CO2 += -dt*inner(self.u*self.c_HbCO2, n)*xi*ds(2)
+            G_c_CO2 += -dt*self.g('CO2', self.p_CO2, self.c_HbCO2, self.c_HbO2)*xi*dx
 
         G = G_p_O2 + G_p_CO2 + G_c_O2 + G_c_CO2
 
         #  Write useful comments for the simulation info file
 
         with open(self.folder_path+'/info.txt', 'w') as file:
-            file.write('Full implicit')
+            file.write('Full implicit')  # This should have a better interface
 
         # Create files for output
 
@@ -299,11 +308,6 @@ class PerfusionGasExchangeModel():
         p_CO2_file = File(self.folder_path+'/bst/pCO2.pvd')
         c_HbO2_file = File(self.folder_path+'/bst/cHbO2.pvd')
         c_HbCO2_file = File(self.folder_path+'/bst/cHbCO2.pvd')
-
-        # Create progress bar
-
-        #progress = Progress('Time-stepping')
-        #set_log_level(progress)
 
         # Time-stepping
 
@@ -359,9 +363,8 @@ class PerfusionGasExchangeModel():
 
             x_nm1.assign(x)
 
-            # Update progress bar
+            # Update progress
 
-            #progress.update(t/self.T)
             print(
                 f'Finished time step {n+1}/{self.N} ({round(t/self.T*100)}%)\n'
             )
