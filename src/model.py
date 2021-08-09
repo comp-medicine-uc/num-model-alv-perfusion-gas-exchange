@@ -68,6 +68,12 @@ class PerfusionGasExchangeModel():
         self.dir_min = 0
         self.dir_max = dims[0]
 
+    def instance_function_spaces(self):
+        '''Instances the relevant function spaces.'''
+
+        self.W_h = FunctionSpace(self.mesh, 'Lagrange', 1)
+        self.V_h = VectorFunctionSpace(self.mesh, 'Lagrange', 1)
+
     def generate_cylinder_mesh(self, end, r, save=True):
         '''Generates a cylindrical mesh for simulations on a tube.
 
@@ -89,10 +95,7 @@ class PerfusionGasExchangeModel():
 
     def sim_p(self):
         '''Solves the perfusion (P) problem of the model.'''
-        # Instance the funciton spaces por scalar and vector functions.
-
-        self.W_h = FunctionSpace(self.mesh, 'Lagrange', 1)
-        self.V_h = VectorFunctionSpace(self.mesh, 'Lagrange', 1)
+        self.instance_function_spaces()
 
         # Instance the relevant boundaries
 
@@ -151,6 +154,17 @@ class PerfusionGasExchangeModel():
         u_file << self.u
         p_file = File(self.folder_path+'/p/p.pvd')
         p_file << self.p
+
+    def set_u(self, value=(0, 0, 0)):
+        '''Prescribes a velocity field u to the mesh instead of solving (P).
+
+        value: uniform velocity field. (tuple)
+        '''
+        self.instance_function_spaces()
+        
+        self.u = project(Expression(value, degree=1), self.V_h)
+        u_file = File(self.folder_path+'/p/u.pvd')
+        u_file << self.u
 
     def f(self, X, p_X, c_HbX, c_HbY):
         '''Generation rate as defined in the model.
