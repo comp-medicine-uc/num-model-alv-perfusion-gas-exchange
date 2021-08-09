@@ -74,6 +74,29 @@ class PerfusionGasExchangeModel():
         self.W_h = FunctionSpace(self.mesh, 'Lagrange', 1)
         self.V_h = VectorFunctionSpace(self.mesh, 'Lagrange', 1)
 
+    def instance_boundaries(self):
+        '''Instances the relevant boundaries for boundary conditions.'''
+
+        # Instance the relevant boundaries
+
+        self.gamma_in = GammaIn(
+            self.dir_min, self.dir_max, DOLFIN_EPS
+        )
+        self.gamma_out = GammaOut(
+            self.dir_min, self.dir_max, DOLFIN_EPS
+        )
+        self.gamma_air = GammaAir(
+            self.dir_min, self.dir_max, DOLFIN_EPS
+        )
+
+        # Declare the boundaries in the mesh and tag them
+
+        self.boundaries = MeshFunction('size_t', self.mesh, dim=2)
+        self.boundaries.set_all(3)
+        self.gamma_in.mark(self.boundaries, 1)
+        self.gamma_out.mark(self.boundaries, 2)
+        self.gamma_air.mark(self.boundaries, 3)
+
     def generate_cylinder_mesh(self, end, r, save=True):
         '''Generates a cylindrical mesh for simulations on a tube.
 
@@ -96,26 +119,7 @@ class PerfusionGasExchangeModel():
     def sim_p(self):
         '''Solves the perfusion (P) problem of the model.'''
         self.instance_function_spaces()
-
-        # Instance the relevant boundaries
-
-        self.gamma_in = GammaIn(
-            self.dir_min, self.dir_max, DOLFIN_EPS
-        )
-        self.gamma_out = GammaOut(
-            self.dir_min, self.dir_max, DOLFIN_EPS
-        )
-        self.gamma_air = GammaAir(
-            self.dir_min, self.dir_max, DOLFIN_EPS
-        )
-
-        # Declare the boundaries in the mesh and tag them
-
-        self.boundaries = MeshFunction('size_t', self.mesh, dim=2)
-        self.boundaries.set_all(3)
-        self.gamma_in.mark(self.boundaries, 1)
-        self.gamma_out.mark(self.boundaries, 2)
-        self.gamma_air.mark(self.boundaries, 3)
+        self.instance_boundaries()
 
         # Declare Dirichlet boundary conditions for (P)
 
@@ -161,8 +165,9 @@ class PerfusionGasExchangeModel():
         value: uniform velocity field. (tuple)
         '''
         self.instance_function_spaces()
-        
-        self.u = project(Expression(value, degree=1), self.V_h)
+        self.instance_boundaries()
+
+        self.u = project(Expression(tuple(map(str, value)), degree=1), self.V_h)
         u_file = File(self.folder_path+'/p/u.pvd')
         u_file << self.u
 
