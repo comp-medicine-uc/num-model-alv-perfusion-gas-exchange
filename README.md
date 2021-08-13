@@ -1,6 +1,6 @@
 # Mathematical and numerical model of alveolar perfusion and gas exchange
 
-@pzuritas
+[@pzuritas](https://github.com/pzuritas)
 
 ## Dependencies
 
