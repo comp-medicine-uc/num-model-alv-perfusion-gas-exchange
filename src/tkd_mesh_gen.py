@@ -57,8 +57,8 @@ mini_octahedron = mini_up_left*mini_up_right*mini_up_front*mini_up_back\
     *mini_bot_left*mini_bot_right*mini_bot_front*mini_bot_back
 
 mini_cube = OrthoBrick(
-    Pnt(-L+h, -L+h, -L+h),
-    Pnt(L-h, L-h, L-h)
+    Pnt((-L+h)*1.2, (-L+h)*1.2, (-L+h)*1.2),
+    Pnt((L-h)*1.2, (L-h)*1.2, (L-h)*1.2)
 )
 
 hole = mini_octahedron*mini_cube
@@ -70,4 +70,4 @@ alv = tkd - hole
 geo = CSGeometry()
 geo.Add(alv)
 mesh = geo.GenerateMesh(maxh=0.1)
-mesh.Export("TKD.gmsh","Gmsh2 Format")
+mesh.Export("./raw-data/TKD.gmsh","Gmsh2 Format")
