@@ -49,7 +49,7 @@ class PerfusionGasExchangeModel():
         self.dir_max = np.max(dir_arr)  # Maximum principal direction coordinate
         self.dir_min = np.min(dir_arr)  # Minimum principal direction coordinate
 
-    def generate_slab_mesh(self, dims, elems, save=True):
+    def generate_slab_mesh(self, dims, elems, save=True, periodic=False):
         '''Generates a rectangular prism mesh for simulations on a slab.
 
         dims: dimensions of the mesh. (tuple)
@@ -69,13 +69,23 @@ class PerfusionGasExchangeModel():
         self.dir_max = dims[0]
         self.dims = dims
 
+        self.periodic = periodic
+
     def instance_function_spaces(self):
         '''Instances the relevant function spaces.'''
 
-        self.W_h = FunctionSpace(self.mesh, 'Lagrange', 1)
-        self.V_h = VectorFunctionSpace(self.mesh, 'Lagrange', 1)
+        if not self.periodic:
+            self.W_h = FunctionSpace(self.mesh, 'Lagrange', 1)
+            self.V_h = VectorFunctionSpace(self.mesh, 'Lagrange', 1)
+        else:
+            self.W_h = FunctionSpace(
+                self.mesh, 'Lagrange', 1, constrained_domain=GammaPi()
+            )
+            self.V_h = VectorFunctionSpace(
+                self.mesh, 'Lagrange', 1, constrained_domain=GammaPi()
+            )
 
-    def instance_boundaries(self, periodic=False):
+    def instance_boundaries(self):
         '''Instances the relevant boundaries for boundary conditions.'''
 
         # Instance the relevant boundaries
@@ -87,7 +97,7 @@ class PerfusionGasExchangeModel():
             self.dir_min, self.dir_max, DOLFIN_EPS
         )
 
-        if not periodic:
+        if not self.periodic:
             self.gamma_air = GammaAir(
                 self.dir_min, self.dir_max, DOLFIN_EPS
             )
@@ -101,13 +111,13 @@ class PerfusionGasExchangeModel():
             self.gamma_air.mark(self.boundaries, 3)
 
         else:
-            self.gamma_pi = GammaPi(0, self.dims[1], DOLFIN_EPS)
-            self.gamma_air = GammaAir_Pi(0, self.dims[2], DOLFIN_EPS)
+            self.gamma_pi = GammaPi(0, self.dims[2], DOLFIN_EPS)
+            self.gamma_air = GammaAir_Pi(0, self.dims[1], DOLFIN_EPS)
 
             # Declare the boundaries in the mesh and tag them
 
             self.boundaries = MeshFunction('size_t', self.mesh, dim=2)
-            self.boundaries.set_all(3)
+            self.boundaries.set_all(0)
             self.gamma_in.mark(self.boundaries, 1)
             self.gamma_out.mark(self.boundaries, 2)
             self.gamma_air.mark(self.boundaries, 3)
@@ -137,8 +147,8 @@ class PerfusionGasExchangeModel():
         
         save: saves to vtk. (bool)
         '''
-        self.instance_function_spaces()
         self.instance_boundaries()
+        self.instance_function_spaces()
 
         # Declare Dirichlet boundary conditions for (P)
 
@@ -186,8 +196,8 @@ class PerfusionGasExchangeModel():
         value: uniform velocity field. (tuple)
         save: saves to vtk. (bool)
         '''
-        self.instance_function_spaces()
         self.instance_boundaries()
+        self.instance_function_spaces()
 
         self.u = project(Expression(tuple(map(str, value)), degree=1), self.V_h)
 
