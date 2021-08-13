@@ -34,8 +34,8 @@ octahedron = up_left*up_right*up_front*up_back\
     *bot_left*bot_right*bot_front*bot_back
 
 cube = OrthoBrick(
-    Pnt(-L, -L, -L),
-    Pnt(L, L, L)
+    Pnt(-L*1.2, -L*1.2, -L*1.2),
+    Pnt(L*1.2, L*1.2, L*1.2)
 )
 
 p_5 = Pnt(L-h, L-h, 0)
@@ -70,3 +70,4 @@ alv = tkd - hole
 geo = CSGeometry()
 geo.Add(alv)
 mesh = geo.GenerateMesh(maxh=0.1)
+mesh.Export("TKD.gmsh","Gmsh2 Format")
