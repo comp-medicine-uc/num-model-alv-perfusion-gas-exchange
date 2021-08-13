@@ -132,8 +132,11 @@ class PerfusionGasExchangeModel():
         self.dir_min = 0
         self.dir_max = end[0]
 
-    def sim_p(self):
-        '''Solves the perfusion (P) problem of the model.'''
+    def sim_p(self, save=True):
+        '''Solves the perfusion (P) problem of the model.
+        
+        save: saves to vtk. (bool)
+        '''
         self.instance_function_spaces()
         self.instance_boundaries()
 
@@ -168,24 +171,30 @@ class PerfusionGasExchangeModel():
             self.V_h
         )
 
-        # Save solutions
+        if save:
 
-        u_file = File(self.folder_path+'/p/u.pvd')
-        u_file << self.u
-        p_file = File(self.folder_path+'/p/p.pvd')
-        p_file << self.p
+            # Save solutions
 
-    def set_u(self, value=(0, 0, 0)):
+            u_file = File(self.folder_path+'/p/u.pvd')
+            u_file << self.u
+            p_file = File(self.folder_path+'/p/p.pvd')
+            p_file << self.p
+
+    def set_u(self, value=(0, 0, 0), save=True):
         '''Prescribes a velocity field u to the mesh instead of solving (P).
 
         value: uniform velocity field. (tuple)
+        save: saves to vtk. (bool)
         '''
         self.instance_function_spaces()
         self.instance_boundaries()
 
         self.u = project(Expression(tuple(map(str, value)), degree=1), self.V_h)
-        u_file = File(self.folder_path+'/p/u.pvd')
-        u_file << self.u
+
+        if save:
+
+            u_file = File(self.folder_path+'/p/u.pvd')
+            u_file << self.u
 
     def f(self, X, p_X, c_HbX, c_HbY):
         '''Generation rate as defined in the model.
@@ -234,12 +243,13 @@ class PerfusionGasExchangeModel():
         else:
             raise ValueError('Gas species in f must be O2 or CO2.')
 
-    def sim_bst(self, final_time, num_steps, hb=True):
+    def sim_bst(self, final_time, num_steps, hb=True, save=True):
         '''Solves the blood-side transport (BST) problem of the model.
         
         final_time: time to simulate in seconds. (float)
         num_steps: number of time steps. (int)
         hb: toggle effects of hemoglobin. (bool)
+        save: saves to vtk. (bool)
         '''
         # Instance parameters
 
@@ -332,17 +342,19 @@ class PerfusionGasExchangeModel():
 
         G = G_p_O2 + G_p_CO2 + G_c_O2 + G_c_CO2
 
-        #  Write useful comments for the simulation info file
+        if save:
 
-        with open(self.folder_path+'/info.txt', 'w') as file:
-            file.write('Full implicit')  # This should have a better interface
+            #  Write useful comments for the simulation info file
 
-        # Create files for output
+            with open(self.folder_path+'/info.txt', 'w') as file:
+                file.write('Full implicit')  # This should be better
 
-        p_O2_file = File(self.folder_path+'/bst/pO2.pvd')
-        p_CO2_file = File(self.folder_path+'/bst/pCO2.pvd')
-        c_HbO2_file = File(self.folder_path+'/bst/cHbO2.pvd')
-        c_HbCO2_file = File(self.folder_path+'/bst/cHbCO2.pvd')
+            # Create files for output
+
+            p_O2_file = File(self.folder_path+'/bst/pO2.pvd')
+            p_CO2_file = File(self.folder_path+'/bst/pCO2.pvd')
+            c_HbO2_file = File(self.folder_path+'/bst/cHbO2.pvd')
+            c_HbCO2_file = File(self.folder_path+'/bst/cHbCO2.pvd')
 
         # Time-stepping
 
@@ -386,13 +398,15 @@ class PerfusionGasExchangeModel():
 
             solve(G == 0, x, self.bst_dbc)
 
-            # Save solution to files
+            if save:
 
-            _p_O2, _p_CO2, _c_HbO2, _c_HbCO2 = x.split()
-            p_O2_file << (_p_O2, t)
-            p_CO2_file << (_p_CO2, t)
-            c_HbO2_file << (_c_HbO2, t)
-            c_HbCO2_file << (_c_HbCO2, t)
+                # Save solution to files
+
+                _p_O2, _p_CO2, _c_HbO2, _c_HbCO2 = x.split()
+                p_O2_file << (_p_O2, t)
+                p_CO2_file << (_p_CO2, t)
+                c_HbO2_file << (_c_HbO2, t)
+                c_HbCO2_file << (_c_HbCO2, t)
 
             # Update previous solution
 
