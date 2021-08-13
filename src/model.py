@@ -67,6 +67,7 @@ class PerfusionGasExchangeModel():
 
         self.dir_min = 0
         self.dir_max = dims[0]
+        self.dims = dims
 
     def instance_function_spaces(self):
         '''Instances the relevant function spaces.'''
@@ -74,7 +75,7 @@ class PerfusionGasExchangeModel():
         self.W_h = FunctionSpace(self.mesh, 'Lagrange', 1)
         self.V_h = VectorFunctionSpace(self.mesh, 'Lagrange', 1)
 
-    def instance_boundaries(self):
+    def instance_boundaries(self, periodic=False):
         '''Instances the relevant boundaries for boundary conditions.'''
 
         # Instance the relevant boundaries
@@ -85,17 +86,32 @@ class PerfusionGasExchangeModel():
         self.gamma_out = GammaOut(
             self.dir_min, self.dir_max, DOLFIN_EPS
         )
-        self.gamma_air = GammaAir(
-            self.dir_min, self.dir_max, DOLFIN_EPS
-        )
 
-        # Declare the boundaries in the mesh and tag them
+        if not periodic:
+            self.gamma_air = GammaAir(
+                self.dir_min, self.dir_max, DOLFIN_EPS
+            )
 
-        self.boundaries = MeshFunction('size_t', self.mesh, dim=2)
-        self.boundaries.set_all(3)
-        self.gamma_in.mark(self.boundaries, 1)
-        self.gamma_out.mark(self.boundaries, 2)
-        self.gamma_air.mark(self.boundaries, 3)
+            # Declare the boundaries in the mesh and tag them
+
+            self.boundaries = MeshFunction('size_t', self.mesh, dim=2)
+            self.boundaries.set_all(3)
+            self.gamma_in.mark(self.boundaries, 1)
+            self.gamma_out.mark(self.boundaries, 2)
+            self.gamma_air.mark(self.boundaries, 3)
+
+        else:
+            self.gamma_pi = GammaPi(0, self.dims[1], DOLFIN_EPS)
+            self.gamma_air = GammaAir_Pi(0, self.dims[2], DOLFIN_EPS)
+
+            # Declare the boundaries in the mesh and tag them
+
+            self.boundaries = MeshFunction('size_t', self.mesh, dim=2)
+            self.boundaries.set_all(3)
+            self.gamma_in.mark(self.boundaries, 1)
+            self.gamma_out.mark(self.boundaries, 2)
+            self.gamma_air.mark(self.boundaries, 3)
+            self.gamma_pi.mark(self.boundaries, 4)
 
     def generate_cylinder_mesh(self, end, r, save=True):
         '''Generates a cylindrical mesh for simulations on a tube.
@@ -486,3 +502,27 @@ class GammaPi(SubDomain):
         y[0] = x[0]
         y[1] = x[1] - (self.dir_max - self.dir_min)
         y[2] = x[2]
+
+class GammaAir_Pi(GammaAir):
+    '''Alternative subdomain class for \Gamma_{\text{air}} when using
+    periodic boundary conditions.
+    '''
+    def __init__(self, dir_min, dir_max, tol):
+        '''Instance the subdomain.
+        
+        dir_min: minimum value of height direction. (float)
+        dir_max: maximum value of height direction. (float)
+        tol: tolerance for numerical roundoff in element tagging. (float)
+        '''
+        super().__init__(dir_min, dir_max, tol)
+
+    def inside(self, x, on_boundary):
+        '''Checks if position is on subdomain.
+        
+        x: position.
+        on_boundary: True if on element boundary. (bool)
+        '''
+        return on_boundary and (
+            near(x[2], self.dir_max, self.tol) \
+                or near(x[2], self.dir_min, self.tol)
+        )
