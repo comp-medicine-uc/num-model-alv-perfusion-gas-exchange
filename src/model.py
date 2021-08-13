@@ -361,17 +361,19 @@ class PerfusionGasExchangeModel():
         t = 0
         for n in range(self.N):
             if n == 0:
-                # Save initial conditions
-                
-                _p_O2, _p_CO2, _c_HbO2, _c_HbCO2 = x.split()
-                _p_O2.assign(project(p_O2_nm1, self.W_h))
-                _p_CO2.assign(project(p_CO2_nm1, self.W_h))
-                _c_HbO2.assign(project(c_HbO2_nm1, self.W_h))
-                _c_HbCO2.assign(project(c_HbCO2_nm1, self.W_h))
-                p_O2_file << (_p_O2, t)
-                p_CO2_file << (_p_CO2, t)
-                c_HbO2_file << (_c_HbO2, t)
-                c_HbCO2_file << (_c_HbCO2, t)
+                if save:
+
+                    # Save initial conditions
+                    
+                    _p_O2, _p_CO2, _c_HbO2, _c_HbCO2 = x.split()
+                    _p_O2.assign(project(p_O2_nm1, self.W_h))
+                    _p_CO2.assign(project(p_CO2_nm1, self.W_h))
+                    _c_HbO2.assign(project(c_HbO2_nm1, self.W_h))
+                    _c_HbCO2.assign(project(c_HbCO2_nm1, self.W_h))
+                    p_O2_file << (_p_O2, t)
+                    p_CO2_file << (_p_CO2, t)
+                    c_HbO2_file << (_c_HbO2, t)
+                    c_HbCO2_file << (_c_HbCO2, t)
 
             # Update current time
 
