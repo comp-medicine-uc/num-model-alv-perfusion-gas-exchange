@@ -7,6 +7,7 @@ from fenics import *
 from dolfin import *
 from mshr import Cylinder, generate_mesh
 from datetime import date
+from boundaries import *
 import time as tm
 import numpy as np
 import os
@@ -79,10 +80,12 @@ class PerfusionGasExchangeModel():
             self.V_h = VectorFunctionSpace(self.mesh, 'Lagrange', 1)
         else:
             self.W_h = FunctionSpace(
-                self.mesh, 'Lagrange', 1, constrained_domain=GammaPi()
+                self.mesh, 'Lagrange', 1,
+                constrained_domain=GammaPi(0, self.dims[2], DOLFIN_EPS)
             )
             self.V_h = VectorFunctionSpace(
-                self.mesh, 'Lagrange', 1, constrained_domain=GammaPi()
+                self.mesh, 'Lagrange', 1,
+                constrained_domain=GammaPi(0, self.dims[2], DOLFIN_EPS)
             )
 
     def instance_boundaries(self):
@@ -429,126 +432,3 @@ class PerfusionGasExchangeModel():
             print(
                 f'Finished time step {n+1}/{self.N} ({round(t/self.T*100)}%)\n'
             )
-
-class GammaIn(SubDomain):
-    '''Subdomain class for boundary conditions.'''
-    def __init__(self, dir_min, dir_max, tol):
-        '''Instance the subdomain.
-        
-        dir_min: minimum value of flow direction. (float)
-        dir_max: maximum value of flow direction. (float)
-        tol: tolerance for numerical roundoff in element tagging. (float)
-        '''
-        super().__init__()
-        self.dir_min = dir_min
-        self.dir_max = dir_max
-        self.tol = tol
-    def inside(self, x, on_boundary):
-        '''Checks if position is on subdomain.
-        
-        x: position.
-        on_boundary: True if on element boundary. (bool)
-        '''
-        return near(x[0], self.dir_min, self.tol)
-
-class GammaOut(SubDomain):
-    '''Subdomain class for boundary conditions.'''
-    def __init__(self, dir_min, dir_max, tol):
-        '''Instance the subdomain.
-        
-        dir_min: minimum value of flow direction. (float)
-        dir_max: maximum value of flow direction. (float)
-        tol: tolerance for numerical roundoff in element tagging. (float)
-        '''
-        super().__init__()
-        self.dir_min = dir_min
-        self.dir_max = dir_max
-        self.tol = tol
-    def inside(self, x, on_boundary):
-        '''Checks if position is on subdomain.
-        
-        x: position.
-        on_boundary: True if on element boundary. (bool)
-        '''
-        return near(x[0], self.dir_max, self.tol)
-
-class GammaAir(SubDomain):
-    '''Subdomain class for boundary conditions.'''
-    def __init__(self, dir_min, dir_max, tol):
-        '''Instance the subdomain.
-        
-        dir_min: minimum value of flow direction. (float)
-        dir_max: maximum value of flow direction. (float)
-        tol: tolerance for numerical roundoff in element tagging. (float)
-        '''
-        super().__init__()
-        self.dir_min = dir_min
-        self.dir_max = dir_max
-        self.tol = tol
-
-    def inside(self, x, on_boundary):
-        '''Checks if position is on subdomain.
-        
-        x: position.
-        on_boundary: True if on element boundary. (bool)
-        '''
-        return on_boundary and not (
-            near(x[0], self.dir_min, self.tol) \
-                or near(x[0], self.dir_max, self.tol)
-        )
-
-class GammaPi(SubDomain):
-    '''Subdomain class for periodic boundary conditions.'''
-    def __init__(self, dir_min, dir_max, tol):
-        '''Instance the subdomain.
-        
-        dir_min: minimum value of periodic direction. (float)
-        dir_max: maximum value of periodic direction. (float)
-        tol: tolerance for numerical roundoff in element tagging. (float)
-        '''
-        super().__init__()
-        self.dir_min = dir_min
-        self.dir_max = dir_max
-        self.tol = tol
-
-    def inside(self, x, on_boundary):
-        '''Checks if position is on subdomain.
-        
-        x: position.
-        on_boundary: True if on element boundary. (bool)
-        '''
-        return on_boundary and near(x[1], self.dir_max, self.tol)
-
-    def map(self, x, y):
-        '''Maps opposite faces for periodic boundary conditions.
-        
-        x: position in subdomain.
-        y: position in opposite subdomain.
-        '''
-        y[0] = x[0]
-        y[1] = x[1] - (self.dir_max - self.dir_min)
-        y[2] = x[2]
-
-class GammaAir_Pi(GammaAir):
-    '''Alternative subdomain class for \Gamma_{\text{air}} when using
-    periodic boundary conditions.
-    '''
-    def __init__(self, dir_min, dir_max, tol):
-        '''Instance the subdomain.
-        
-        dir_min: minimum value of height direction. (float)
-        dir_max: maximum value of height direction. (float)
-        tol: tolerance for numerical roundoff in element tagging. (float)
-        '''
-        super().__init__(dir_min, dir_max, tol)
-
-    def inside(self, x, on_boundary):
-        '''Checks if position is on subdomain.
-        
-        x: position.
-        on_boundary: True if on element boundary. (bool)
-        '''
-        return on_boundary and (
-            near(x[2], self.dir_max, self.tol) \
-                or near(x[2], self.dir_min, self.tol)
-        )
