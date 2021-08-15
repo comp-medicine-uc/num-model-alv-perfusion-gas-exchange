@@ -7,7 +7,7 @@ from fenics import *
 from dolfin import *
 from mshr import Cylinder, generate_mesh
 from datetime import date
-from boundaries import *
+from src.boundaries import *
 import time as tm
 import numpy as np
 import os
@@ -108,7 +108,7 @@ class PerfusionGasExchangeModel():
             # Declare the boundaries in the mesh and tag them
 
             self.boundaries = MeshFunction('size_t', self.mesh, dim=2)
-            self.boundaries.set_all(3)
+            self.boundaries.set_all(0)
             self.gamma_in.mark(self.boundaries, 1)
             self.gamma_out.mark(self.boundaries, 2)
             self.gamma_air.mark(self.boundaries, 3)

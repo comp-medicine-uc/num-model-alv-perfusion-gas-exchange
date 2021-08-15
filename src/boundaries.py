@@ -74,7 +74,7 @@ class GammaAir(SubDomain):
         )
 
 class GammaPi(SubDomain):
-    '''Subdomain class for periodic boundary conditions.'''
+    '''Subdomain class for periodic boundary conditions in slab mesh.'''
     def __init__(self, dir_min, dir_max, tol):
         '''Instance the subdomain.
         
@@ -93,7 +93,7 @@ class GammaPi(SubDomain):
         x: position.
         on_boundary: True if on element boundary. (bool)
         '''
-        return on_boundary and near(x[1], self.dir_max, self.tol)
+        return on_boundary and near(x[2], self.dir_max, self.tol)
 
     def map(self, x, y):
         '''Maps opposite faces for periodic boundary conditions.
@@ -102,8 +102,8 @@ class GammaPi(SubDomain):
         y: position in opposite subdomain.
         '''
         y[0] = x[0]
-        y[1] = x[1] - (self.dir_max - self.dir_min)
-        y[2] = x[2]
+        y[1] = x[1]
+        y[2] = x[2] - (self.dir_max - self.dir_min)
 
 class GammaAir_Pi(GammaAir):
     '''Alternative subdomain class for \Gamma_{\text{air}} when using
@@ -125,6 +125,6 @@ class GammaAir_Pi(GammaAir):
         on_boundary: True if on element boundary. (bool)
         '''
         return on_boundary and (
-            near(x[2], self.dir_max, self.tol) \
-                or near(x[2], self.dir_min, self.tol)
+            near(x[1], self.dir_max, self.tol) \
+                or near(x[1], self.dir_min, self.tol)
         )
