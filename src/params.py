@@ -6,7 +6,7 @@ Parameter file for perfusion and gas exchange model.
 from dolfin import Constant
 
 
-avg_speed_size = 1000  # (Normal is 1000)
+avg_speed_size = 1  # (Normal is 1000)
 mu = 3.5*0.00750062E-3  # mmHg*s
 kappa = mu*avg_speed_size/4*300  # um^2s
 p_max = 12  # mmHg
