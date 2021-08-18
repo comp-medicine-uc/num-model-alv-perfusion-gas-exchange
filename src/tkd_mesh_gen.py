@@ -1,73 +1,104 @@
-from ngsolve import *
-from netgen.csg import *
+'''TKD mesh generator using Netgen for alveolar simulations.
+'''
 
+__author__ = 'pzuritas'
+__email__ = 'pzurita@uc.cl'
 
-L = 1
-h = 0.1
+from netgen.csg import Vec, Plane, OrthoBrick, Pnt, CSGeometry
+import meshio
 
-n_1 = Vec(1, 1, 1)
-n_2 = Vec(1, -1, 1)
-n_3 = Vec(-1, 1, 1)
-n_4 = Vec(-1, -1, 1)
+def TKD_generator(
+    R=100, h=6, maxh=2, save=True, name='./raw-data/TKD', convert=True
+):
+    '''Creates a TKD cuboid mesh as alveolar approximation using Netgen.
 
-n_5 = Vec(1, 1, -1)
-n_6 = Vec(1, -1, -1)
-n_7 = Vec(-1, 1, -1)
-n_8 = Vec(-1, -1, -1)
+    R: alveolar radius in um. (int or float)
+    h: blood-air barrier/alvelar wall thickness in um. (int or float)
+    maxh: maximum element diameter h for mesher. (int or float)
+    save: saves the mesh in Gmsh format. (bool)
+    name: path for Gmsh file when saved. (string)
+    convert: converts the Gmsh to VTK using meshio. (bool)
+    '''
 
-p_1 = Pnt(L, L, 0)
-p_2 = Pnt(L, -L, 0)
-p_3 = Pnt(-L, L, 0)
-p_4 = Pnt(-L, -L, 0)
+    # Plane directions for TKD
 
-up_left = Plane(p_1, n_1)
-up_front = Plane(p_2, n_2)
-up_right = Plane(p_3, n_3)
-up_back = Plane(p_4, n_4)
+    n = {
+        1: Vec(1, 1, 1),
+        2: Vec(1, -1, 1),
+        3: Vec(-1, 1, 1),
+        4: Vec(-1, -1, 1),
+        5: Vec(1, 1, -1),
+        6: Vec(1, -1, -1),
+        7: Vec(-1, 1, -1),
+        8: Vec(-1, -1, -1)
+    }
 
-bot_left = Plane(p_1, n_5)
-bot_front = Plane(p_2, n_6)
-bot_right = Plane(p_3, n_7)
-bot_back = Plane(p_4, n_8)
+    # Points for geometry
 
-octahedron = up_left*up_right*up_front*up_back\
-    *bot_left*bot_right*bot_front*bot_back
+    p = {
+        1: Pnt(R, R, 0),
+        2: Pnt(R, -R, 0),
+        3: Pnt(-R, R, 0),
+        4: Pnt(-R, -R, 0),
+        5: Pnt(R-h, R-h, 0),
+        6: Pnt(R-h, -R+h, 0),
+        7: Pnt(-R+h, R-h, 0),
+        8: Pnt(-R+h, -R+h, 0)
+    }
 
-cube = OrthoBrick(
-    Pnt(-L*1.2, -L*1.2, -L*1.2),
-    Pnt(L*1.2, L*1.2, L*1.2)
-)
+    # Planes
 
-p_5 = Pnt(L-h, L-h, 0)
-p_6 = Pnt(L-h, -L+h, 0)
-p_7 = Pnt(-L+h, L-h, 0)
-p_8 = Pnt(-L+h, -L+h, 0)
+    up_left = Plane(p[1], n[1])
+    up_front = Plane(p[2], n[2])
+    up_right = Plane(p[3], n[3])
+    up_back = Plane(p[4], n[4])
 
-mini_up_left = Plane(p_5, n_1)
-mini_up_front = Plane(p_6, n_2)
-mini_up_right = Plane(p_7, n_3)
-mini_up_back = Plane(p_8, n_4)
+    bot_left = Plane(p[1], n[5])
+    bot_front = Plane(p[2], n[6])
+    bot_right = Plane(p[3], n[7])
+    bot_back = Plane(p[4], n[8])
 
-mini_bot_left = Plane(p_5, n_5)
-mini_bot_front = Plane(p_6, n_6)
-mini_bot_right = Plane(p_7, n_7)
-mini_bot_back = Plane(p_8, n_8)
+    octahedron = up_left*up_right*up_front*up_back\
+        *bot_left*bot_right*bot_front*bot_back
 
-mini_octahedron = mini_up_left*mini_up_right*mini_up_front*mini_up_back\
-    *mini_bot_left*mini_bot_right*mini_bot_front*mini_bot_back
+    cube = OrthoBrick(
+        Pnt(-R*1.2, -R*1.2, -R*1.2),
+        Pnt(R*1.2, R*1.2, R*1.2)
+    )
 
-mini_cube = OrthoBrick(
-    Pnt((-L+h)*1.2, (-L+h)*1.2, (-L+h)*1.2),
-    Pnt((L-h)*1.2, (L-h)*1.2, (L-h)*1.2)
-)
+    mini_up_left = Plane(p[5], n[1])
+    mini_up_front = Plane(p[6], n[2])
+    mini_up_right = Plane(p[7], n[3])
+    mini_up_back = Plane(p[8], n[4])
 
-hole = mini_octahedron*mini_cube
+    mini_bot_left = Plane(p[5], n[5])
+    mini_bot_front = Plane(p[6], n[6])
+    mini_bot_right = Plane(p[7], n[7])
+    mini_bot_back = Plane(p[8], n[8])
 
-tkd = octahedron*cube
+    mini_octahedron = mini_up_left*mini_up_right*mini_up_front*mini_up_back\
+        *mini_bot_left*mini_bot_right*mini_bot_front*mini_bot_back
 
-alv = tkd - hole
+    mini_cube = OrthoBrick(
+        Pnt((-R+h)*1.2, (-R+h)*1.2, (-R+h)*1.2),
+        Pnt((R-h)*1.2, (R-h)*1.2, (R-h)*1.2)
+    )
 
-geo = CSGeometry()
-geo.Add(alv)
-mesh = geo.GenerateMesh(maxh=0.1)
-mesh.Export("./raw-data/TKD.gmsh","Gmsh2 Format")
+    hole = mini_octahedron*mini_cube
+    tkd = octahedron*cube
+    alv = tkd - hole
+
+    geo = CSGeometry()
+    geo.Add(alv)
+    mesh = geo.GenerateMesh(maxh=maxh)
+
+    if save:
+        mesh.Export(name+".gmsh","Gmsh2 Format")
+        if convert:
+            meshio_mesh = meshio.read(name+".gmsh", file_format="gmsh")
+            meshio_mesh.write(name+".vtk")
+
+    return mesh
+
+if __name__ == '__main__':
+    TKD_generator()
