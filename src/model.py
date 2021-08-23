@@ -1,16 +1,17 @@
+'''Model file for alveolar perfusion and gas exchange simulations.
 '''
-Model file for alveolar perfusion and gas exchange simulations.
 
-@author pzuritas
-'''
+__author__ = 'pzuritas'
+__email__ = 'pzurita@uc.cl'
+
+import os
+import time as tm
+from datetime import date
+import numpy as np
 from fenics import *
 from dolfin import *
 from mshr import Cylinder, generate_mesh
-from datetime import date
 from src.boundaries import *
-import time as tm
-import numpy as np
-import os
 
 
 class PerfusionGasExchangeModel():
