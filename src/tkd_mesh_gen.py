@@ -7,17 +7,36 @@ __email__ = 'pzurita@uc.cl'
 from netgen.csg import Vec, Plane, OrthoBrick, Pnt, CSGeometry
 import meshio
 
-def TKD_generator(
-    R=100, h=6, maxh=2, save=True, name='./raw-data/TKD', convert=True
-):
-    '''Creates a TKD cuboid mesh as alveolar approximation using Netgen.
+
+def points(R=100, h=6, translate=(0, 0, 0)):
+    '''Returns a dictionary of Netgen points for a single TKD.
 
     R: alveolar radius in um. (int or float)
     h: blood-air barrier/alvelar wall thickness in um. (int or float)
-    maxh: maximum element diameter h for mesher. (int or float)
-    save: saves the mesh in Gmsh format. (bool)
-    name: path for Gmsh file when saved. (string)
-    convert: converts the Gmsh to VTK using meshio. (bool)
+    translate: vector for position of TKD. (tuple of floats or ints)
+    '''
+
+    p = {
+        1: Pnt(R+translate[0], R+translate[1], 0+translate[2]),
+        2: Pnt(R+translate[0], -R+translate[1], 0+translate[2]),
+        3: Pnt(-R+translate[0], R+translate[1], 0+translate[2]),
+        4: Pnt(-R+translate[0], -R+translate[1], 0+translate[2]),
+        5: Pnt(R-h+translate[0], R-h+translate[1], 0+translate[2]),
+        6: Pnt(R-h+translate[0], -R+h+translate[1], 0+translate[2]),
+        7: Pnt(-R+h+translate[0], R-h+translate[1], 0+translate[2]),
+        8: Pnt(-R+h+translate[0], -R+h+translate[1], 0+translate[2])
+    }
+
+    return p
+
+def TKD_generator(
+    p, R=100, h=6
+):
+    '''Creates a TKD cuboid geometry as alveolar approximation using Netgen.
+
+    p: points for single TKD from points function. (dict)
+    R: alveolar radius in um. (int or float)
+    h: blood-air barrier/alvelar wall thickness in um. (int or float)
     '''
 
     # Plane directions for TKD
@@ -31,19 +50,6 @@ def TKD_generator(
         6: Vec(1, -1, -1),
         7: Vec(-1, 1, -1),
         8: Vec(-1, -1, -1)
-    }
-
-    # Points for geometry
-
-    p = {
-        1: Pnt(R, R, 0),
-        2: Pnt(R, -R, 0),
-        3: Pnt(-R, R, 0),
-        4: Pnt(-R, -R, 0),
-        5: Pnt(R-h, R-h, 0),
-        6: Pnt(R-h, -R+h, 0),
-        7: Pnt(-R+h, R-h, 0),
-        8: Pnt(-R+h, -R+h, 0)
     }
 
     # Planes
@@ -90,7 +96,65 @@ def TKD_generator(
 
     geo = CSGeometry()
     geo.Add(alv)
-    mesh = geo.GenerateMesh(maxh=maxh)
+
+    return geo
+
+def TKD_mesher(maxh=2, save=True, name='./raw-data/TKD', convert=True):
+    '''Creates a TKD mesh for periodic filling of space, simulating alveolar
+    geometries.
+
+    maxh: maximum element diameter h for mesher. (int or float)
+    save: saves the mesh in Gmsh format. (bool)
+    name: path for Gmsh file when saved. (string)
+    convert: converts the Gmsh to VTK using meshio. (bool)
+    '''
+
+    tkd_1 = TKD_generator(
+    #    points(R=100, h=6, translate=(0, 0, 2*100+6)), R=100, h=6
+        points(R=100, h=6, translate=(0, 0, 0)), R=100, h=6
+    )
+
+    '''
+    # alv needs to be copied and moved 2R+h along axes and then intersected with
+    # a 2(2R + h) side length cube
+
+    points = {
+        "up": {
+            1: points(R=R, h=h, translate=(0, 0, 2*R+h)),
+            2: points(R=R, h=h, translate=(0, 2*R+h, 2*R+h)),
+            3: points(R=R, h=h, translate=(2*R+h, 0, 2*R+h)),
+            4: points(R=R, h=h, translate=(2*R+h, 2*R+h, 2*R+h)),
+            5: points(R=R, h=h, translate=(0, -2*R-h, 2*R+h)),
+            6: points(R=R, h=h, translate=(-2*R-h, 0, 2*R+h)),
+            7: points(R=R, h=h, translate=(-2*R-h, -2*R-h, 2*R+h)),
+            8: points(R=R, h=h, translate=(-2*R-h, 2*R+h, 2*R+h)),
+            9: points(R=R, h=h, translate=(2*R+h, -2*R-h, 2*R+h))
+        },
+        "mid": {
+            2: points(R=R, h=h, translate=(0, 2*R+h, 0)),
+            3: points(R=R, h=h, translate=(2*R+h, 0, 0)),
+            4: points(R=R, h=h, translate=(2*R+h, 2*R+h, 0)),
+            5: points(R=R, h=h, translate=(0, -2*R-h, 0)),
+            6: points(R=R, h=h, translate=(-2*R-h, 0, 0)),
+            7: points(R=R, h=h, translate=(-2*R-h, -2*R-h, 0)),
+            8: points(R=R, h=h, translate=(-2*R-h, 2*R+h, 0)),
+            9: points(R=R, h=h, translate=(2*R+h, -2*R-h, 0))
+        },
+        "down":{
+            1: points(R=R, h=h, translate=(0, 0, -2*R-h)),
+            2: points(R=R, h=h, translate=(0, 2*R+h, -2*R-h)),
+            3: points(R=R, h=h, translate=(2*R+h, 0, -2*R-h)),
+            4: points(R=R, h=h, translate=(2*R+h, 2*R+h, -2*R-h)),
+            5: points(R=R, h=h, translate=(0, -2*R-h, -2*R-h)),
+            6: points(R=R, h=h, translate=(-2*R-h, 0, -2*R-h)),
+            7: points(R=R, h=h, translate=(-2*R-h, -2*R-h, -2*R-h)),
+            8: points(R=R, h=h, translate=(-2*R-h, 2*R+h, -2*R-h)),
+            9: points(R=R, h=h, translate=(2*R+h, -2*R-h, -2*R-h))
+        },
+    }
+    '''
+
+    mesh = tkd_1.GenerateMesh(maxh=maxh)
 
     if save:
         mesh.Export(name+".gmsh","Gmsh2 Format")
@@ -101,4 +165,4 @@ def TKD_generator(
     return mesh
 
 if __name__ == '__main__':
-    TKD_generator()
+    TKD_mesher(maxh=2, save=True, name='./raw-data/TKD_test', convert=True)
