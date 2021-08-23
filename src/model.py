@@ -36,20 +36,29 @@ class PerfusionGasExchangeModel():
             for param in self.params:
                 file.write(f'Parameter {param}: {self.params[param]}\n')
 
-    def import_h5mesh(self, mesh_path):
+    def import_mesh(self, mesh_path, type="h5", periodic=False):
         '''Imports mesh from .h5 file for use in simulations.
 
         mesh_path: path to .h5 file. (string)
         '''
-        hdf5 = HDF5File(MPI.comm_world, mesh_path, 'r')
-        self.mesh = Mesh()
-        hdf5.read(self.mesh, 'mesh', False)
+        if type == "h5":
+            hdf5 = HDF5File(MPI.comm_world, mesh_path, 'r')
+            self.mesh = Mesh()
+            hdf5.read(self.mesh, 'mesh', False)
+        elif type == "xml":
+            self.mesh = Mesh(mesh_path)
+        else:
+            raise ValueError("type of mesh should be h5 or xml")
 
         dir_arr = np.array(
                 [coords[0] for coords in self.mesh.coordinates()]
             )  # Node coordinates for principal (x) direction
         self.dir_max = np.max(dir_arr)  # Maximum principal direction coordinate
         self.dir_min = np.min(dir_arr)  # Minimum principal direction coordinate
+
+        self.dims = (self.dir_max, self.dir_max, self.dir_max)
+
+        self.periodic = periodic
 
     def generate_slab_mesh(self, dims, elems, save=True, periodic=False):
         '''Generates a rectangular prism mesh for simulations on a slab.
@@ -160,12 +169,12 @@ class PerfusionGasExchangeModel():
         self.dir_min = 0
         self.dir_max = end[0]
 
-    def sim_p(self, save=True):
+    def sim_p(self, save=True, meshtype=None):
         '''Solves the perfusion (P) problem of the model.
         
         save: saves to vtk. (bool)
         '''
-        self.instance_boundaries()
+        self.instance_boundaries(mesh=meshtype)
         self.instance_function_spaces()
 
         # Declare Dirichlet boundary conditions for (P)
