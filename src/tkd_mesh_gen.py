@@ -161,8 +161,9 @@ def TKD_mesher(maxh=2, save=True, name='./raw-data/TKD', convert=True):
         if convert:
             meshio_mesh = meshio.read(name+".gmsh", file_format="gmsh")
             meshio_mesh.write(name+".vtk")
+            meshio_mesh.write(name+".xml")
 
     return mesh
 
 if __name__ == '__main__':
-    TKD_mesher(maxh=2, save=True, name='./raw-data/TKD_test', convert=True)
+    TKD_mesher(maxh=10, save=True, name='./raw-data/TKD_test', convert=True)
