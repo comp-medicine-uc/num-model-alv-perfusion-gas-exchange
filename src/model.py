@@ -82,15 +82,18 @@ class PerfusionGasExchangeModel():
         else:
             self.W_h = FunctionSpace(
                 self.mesh, 'Lagrange', 1,
-                constrained_domain=GammaPi(0, self.dims[2], DOLFIN_EPS)
+                constrained_domain=self.gamma_pi
             )
             self.V_h = VectorFunctionSpace(
                 self.mesh, 'Lagrange', 1,
-                constrained_domain=GammaPi(0, self.dims[2], DOLFIN_EPS)
+                constrained_domain=self.gamma_pi
             )
 
-    def instance_boundaries(self):
-        '''Instances the relevant boundaries for boundary conditions.'''
+    def instance_boundaries(self, mesh=None):
+        '''Instances the relevant boundaries for boundary conditions.
+        
+        mesh: type of mesh created. None, "slab" or "tkd". (str)
+        '''
 
         # Instance the relevant boundaries
 
@@ -115,9 +118,20 @@ class PerfusionGasExchangeModel():
             self.gamma_air.mark(self.boundaries, 3)
 
         else:
-            self.gamma_pi = GammaPi(0, self.dims[2], DOLFIN_EPS)
-            self.gamma_air = GammaAir_Pi(0, self.dims[1], DOLFIN_EPS)
-
+            if mesh == "slab":
+                self.gamma_pi = GammaSlabPi(0, self.dims[2], DOLFIN_EPS)
+                self.gamma_air = GammaAirSlabPi(0, self.dims[1], DOLFIN_EPS)
+            elif mesh == "tkd":
+                self.gamma_pi = GammaTKDPi(
+                    -self.dims[0], self.dims[0], DOLFIN_EPS
+                )
+                self.gamma_air = GammaAirTKD(
+                    -self.dims[0], self.dims[0], DOLFIN_EPS
+                )
+            else:
+                raise ValueError(
+                    "Mesh type must be slab or tkd for periodicity."
+                )
             # Declare the boundaries in the mesh and tag them
 
             self.boundaries = MeshFunction('size_t', self.mesh, dim=2)

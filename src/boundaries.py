@@ -173,11 +173,28 @@ class GammaAirTKD(SubDomain):
     def __init__(self, dir_min, dir_max, tol):
         '''Instance the subdomain.
         
-        dir_min: minimum value of periodic direction. (float)
-        dir_max: maximum value of periodic direction. (float)
+        dir_min: minimum value of periodic direction (z or y). (float)
+        dir_max: maximum value of periodic direction (z or y). (float)
         tol: tolerance for numerical roundoff in element tagging. (float)
         '''
         super().__init__()
         self.dir_min = dir_min
         self.dir_max = dir_max
         self.tol = tol
+
+    def inside(self, x, on_boundary):
+        '''Checks if position is on subdomain.
+        
+        x: position.
+        on_boundary: True if on element boundary. (bool)
+        '''
+        return on_boundary and not (
+            near(x[0], self.dir_max, self.tol) \
+                or near(x[0], self.dir_max, self.tol)
+        ) and not (
+            near(x[1], self.dir_min, self.tol) \
+                or near(x[1], self.dir_max, self.tol)
+        ) and not (
+            near(x[2], self.dir_min, self.tol) \
+                or near(x[2], self.dir_max, self.tol)
+        )
