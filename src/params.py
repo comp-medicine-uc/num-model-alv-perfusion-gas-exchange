@@ -1,8 +1,9 @@
+'''Parameter file for perfusion and gas exchange model.
 '''
-Parameter file for perfusion and gas exchange model.
 
-@author: pzuritas
-'''
+__author__ = 'pzuritas'
+__email__ = 'pzurita@uc.cl'
+
 from dolfin import Constant
 
 
@@ -14,15 +15,15 @@ p_min = 8  # mmHg
 
 d_pla_O2 = 1.62E-5*1E8  # um^2/s
 d_ba_O2 = 1E-5*1E8  # um^2/s
-beta_O2 = 1.41E-6/(1E15) # mol/um^3/mmHg  ARE THESE UNITS (and the rest) OK?
-k_prime_O2 = 20  # 1/s
-k_O2 = 7.5E-6/1E15  # um^3/mol/s
+beta_O2 = 0.9*1.41E-6/(1E15) # mol/um^3/mmHg
+k_O2 = 20  # 1/s
+k_prime_O2 = 66E-6*1E15  # um^3/mol/s
 
 d_pla_CO2 = 1E-5*1E8  # um^2/s
 d_ba_CO2 = 0.914E-5*1E8  # um^2/s
-beta_CO2 = 28.2E-6/(1E15)  # mol/um^3/mmHg
-k_prime_CO2 = 0.008  # 1/s
-k_CO2 = 0.12E-6/1E15  # um^3/mol/s
+beta_CO2 = 0.9*28.2E-6/(1E15)  # mol/um^3/mmHg
+k_CO2 = 0.008  # 1/s
+k_prime_CO2 = 6E-6*1E15  # um^3/mol/s
 
 c_t = 2.5E-3/(1E15)  # mol/um^3
 h_ba = 0.3  # um
