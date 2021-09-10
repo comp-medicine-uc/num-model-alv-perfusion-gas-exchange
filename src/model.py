@@ -456,3 +456,107 @@ class PerfusionGasExchangeModel():
             print(
                 f'Finished time step {n+1}/{self.N} ({round(t/self.T*100)}%)\n'
             )
+
+    def sim_sbst(self, hb=True, save=True):
+        '''Solves the steady state blood-side transport (SBST) problem of the
+        model.
+        
+        hb: toggle effects of hemoglobin. (bool)
+        save: saves to vtk. (bool)
+        '''
+        # Instance parameters
+
+        p_air_O2 = self.params['p_air_O2']
+        d_ba_O2 = self.params['d_ba_O2']
+        d_pla_O2 = self.params['d_pla_O2']
+
+        p_air_CO2 = self.params['p_air_CO2']
+        d_ba_CO2 = self.params['d_ba_CO2']
+        d_pla_CO2 = self.params['d_pla_CO2']
+
+        h_ba = self.params['h_ba']
+
+        # Instance function space for the multi-field problem
+
+        element = VectorElement('P', tetrahedron, 1, dim=4)
+        self.M_h = FunctionSpace(self.mesh, element)
+
+        # Declare functions and test functions
+
+        x = Function(self.M_h)
+        self.p_O2, self.p_CO2, self.c_HbO2, self.c_HbCO2 = split(x)
+
+        v, w, eta, xi = TestFunctions(self.M_h)
+
+        n = FacetNormal(self.mesh)
+
+        # Define residuals
+
+        G_p_O2 = d_pla_O2*inner(grad(self.p_O2), grad(v))*dx
+        G_p_O2 += d_ba_O2/h_ba*self.p_O2*v*ds(3)
+        G_p_O2 += inner(self.p_O2*self.u, grad(v))*dx
+        G_p_O2 += -inner(self.p_O2*self.u, n)*v*ds(2)
+        G_p_O2 += self.f('O2', self.p_O2, self.c_HbO2, self.c_HbCO2)*v*dx
+        G_p_O2 += -d_ba_O2/h_ba*p_air_O2*v*ds(3)
+
+        G_p_CO2 = d_pla_CO2*inner(grad(self.p_CO2), grad(w))*dx
+        G_p_CO2 += d_ba_CO2/h_ba*self.p_CO2*w*ds(3)
+        G_p_CO2 += inner(self.p_CO2*self.u, grad(w))*dx
+        G_p_CO2 += -inner(self.p_CO2*self.u, n)*w*ds(2)
+        G_p_CO2 += self.f('CO2', self.p_CO2, self.c_HbCO2, self.c_HbO2)*w*dx
+        G_p_CO2 += -d_ba_CO2/h_ba*p_air_CO2*w*ds(3)
+
+        G_c_O2 = -self.g('O2', self.p_O2, self.c_HbO2, self.c_HbCO2)*eta*dx
+        G_c_O2 += inner(self.c_HbO2*self.u, grad(eta))*dx
+        G_c_O2 += -inner(self.c_HbO2*self.u, n)*eta*ds(2)
+
+        G_c_CO2 = -self.g('CO2', self.p_CO2, self.c_HbCO2, self.c_HbO2)*xi*dx
+        G_c_CO2 += inner(self.c_HbCO2*self.u, grad(xi))*dx
+        G_c_CO2 += -inner(self.c_HbCO2*self.u, n)*xi*ds(2)
+        
+        G = G_p_O2 + G_p_CO2 + G_c_O2 + G_c_CO2
+
+        if save:
+
+            #  Write useful comments for the simulation info file
+
+            with open(self.folder_path+'/info.txt', 'w') as file:
+                file.write('Full implicit')  # This should be better
+
+            # Create files for output
+
+            p_O2_file = File(self.folder_path+'/sbst/pO2.pvd')
+            p_CO2_file = File(self.folder_path+'/sbst/pCO2.pvd')
+            c_HbO2_file = File(self.folder_path+'/sbst/cHbO2.pvd')
+            c_HbCO2_file = File(self.folder_path+'/sbst/cHbCO2.pvd')
+
+        # Declare Dirichlet boundary conditions for (SBST)
+
+        self.sbst_dbc = [
+            DirichletBC(
+                self.M_h.sub(0), self.params['p_O2_in'], self.gamma_in
+            ),
+            DirichletBC(
+                self.M_h.sub(1), self.params['p_CO2_in'], self.gamma_in
+            ),
+            DirichletBC(
+                self.M_h.sub(2), Constant(0), self.gamma_in
+            ),
+            DirichletBC(
+                self.M_h.sub(3), Constant(0), self.gamma_in
+            )
+        ]
+
+        # Solve variational problem
+
+        solve(G == 0, x, self.sbst_dbc)
+
+        if save:
+
+            # Save solution to files
+
+            _p_O2, _p_CO2, _c_HbO2, _c_HbCO2 = x.split()
+            p_O2_file << _p_O2
+            p_CO2_file << _p_CO2
+            c_HbO2_file << _c_HbO2
+            c_HbCO2_file << _c_HbCO2
