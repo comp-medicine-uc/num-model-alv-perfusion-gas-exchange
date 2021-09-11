@@ -121,7 +121,7 @@ class PerfusionGasExchangeModel():
             # Declare the boundaries in the mesh and tag them
 
             self.boundaries = MeshFunction('size_t', self.mesh, dim=2)
-            self.boundaries.set_all(0)
+            self.boundaries.set_all(3)
             self.gamma_in.mark(self.boundaries, 1)
             self.gamma_out.mark(self.boundaries, 2)
             self.gamma_air.mark(self.boundaries, 3)
@@ -144,7 +144,7 @@ class PerfusionGasExchangeModel():
             # Declare the boundaries in the mesh and tag them
 
             self.boundaries = MeshFunction('size_t', self.mesh, dim=2)
-            self.boundaries.set_all(0)
+            self.boundaries.set_all(3)
             self.gamma_in.mark(self.boundaries, 1)
             self.gamma_out.mark(self.boundaries, 2)
             self.gamma_air.mark(self.boundaries, 3)
@@ -493,27 +493,35 @@ class PerfusionGasExchangeModel():
         # Define residuals
 
         G_p_O2 = d_pla_O2*inner(grad(self.p_O2), grad(v))*dx
+        G_p_O2 += -d_ba_O2/h_ba*Constant(p_air_O2)*v*ds(3)
         G_p_O2 += d_ba_O2/h_ba*self.p_O2*v*ds(3)
-        G_p_O2 += inner(self.p_O2*self.u, grad(v))*dx
-        G_p_O2 += -inner(self.p_O2*self.u, n)*v*ds(2)
-        G_p_O2 += self.f('O2', self.p_O2, self.c_HbO2, self.c_HbCO2)*v*dx
-        G_p_O2 += -d_ba_O2/h_ba*p_air_O2*v*ds(3)
+        G_p_O2 += inner(self.p_O2*self.u, n)*v*ds(2)
+        G_p_O2 += -inner(self.p_O2*self.u, grad(v))*dx
+        if hb:
+            G_p_O2 += self.f('O2', self.p_O2, self.c_HbO2, self.c_HbCO2)*v*dx
 
         G_p_CO2 = d_pla_CO2*inner(grad(self.p_CO2), grad(w))*dx
+        G_p_CO2 += -d_ba_CO2/h_ba*Constant(p_air_CO2)*w*ds(3)
         G_p_CO2 += d_ba_CO2/h_ba*self.p_CO2*w*ds(3)
-        G_p_CO2 += inner(self.p_CO2*self.u, grad(w))*dx
-        G_p_CO2 += -inner(self.p_CO2*self.u, n)*w*ds(2)
-        G_p_CO2 += self.f('CO2', self.p_CO2, self.c_HbCO2, self.c_HbO2)*w*dx
-        G_p_CO2 += -d_ba_CO2/h_ba*p_air_CO2*w*ds(3)
+        G_p_CO2 += inner(self.p_CO2*self.u, n)*w*ds(2)
+        G_p_CO2 += -inner(self.p_CO2*self.u, grad(w))*dx
+        if hb:
+            G_p_CO2 += self.f('CO2', self.p_CO2, self.c_HbCO2, self.c_HbO2)*w*dx
 
-        G_c_O2 = -self.g('O2', self.p_O2, self.c_HbO2, self.c_HbCO2)*eta*dx
-        G_c_O2 += inner(self.c_HbO2*self.u, grad(eta))*dx
-        G_c_O2 += -inner(self.c_HbO2*self.u, n)*eta*ds(2)
+        if hb:
+            G_c_O2 = self.g('O2', self.p_O2, self.c_HbO2, self.c_HbCO2)*eta*dx
+            G_c_O2 += inner(self.c_HbO2*self.u, grad(eta))*dx
+            G_c_O2 += -inner(self.c_HbO2*self.u, n)*eta*ds(2)
 
-        G_c_CO2 = -self.g('CO2', self.p_CO2, self.c_HbCO2, self.c_HbO2)*xi*dx
-        G_c_CO2 += inner(self.c_HbCO2*self.u, grad(xi))*dx
-        G_c_CO2 += -inner(self.c_HbCO2*self.u, n)*xi*ds(2)
-        
+            G_c_CO2 = self.g(
+                'CO2', self.p_CO2, self.c_HbCO2, self.c_HbO2
+            )*xi*dx
+            G_c_CO2 += inner(self.c_HbCO2*self.u, grad(xi))*dx
+            G_c_CO2 += -inner(self.c_HbCO2*self.u, n)*xi*ds(2)
+        else:
+            G_c_O2 = self.c_HbO2*eta*dx
+            G_c_CO2 = self.c_HbCO2*xi*dx
+
         G = G_p_O2 + G_p_CO2 + G_c_O2 + G_c_CO2
 
         if save:
@@ -534,10 +542,11 @@ class PerfusionGasExchangeModel():
 
         self.sbst_dbc = [
             DirichletBC(
-                self.M_h.sub(0), self.params['p_O2_in'], self.gamma_in
+                self.M_h.sub(0), Constant(self.params['p_O2_in']), self.gamma_in
             ),
             DirichletBC(
-                self.M_h.sub(1), self.params['p_CO2_in'], self.gamma_in
+                self.M_h.sub(1), Constant(self.params['p_CO2_in']),
+                self.gamma_in
             ),
             DirichletBC(
                 self.M_h.sub(2), Constant(0), self.gamma_in
