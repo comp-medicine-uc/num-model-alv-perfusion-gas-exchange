@@ -69,8 +69,8 @@ class GammaAir(SubDomain):
         on_boundary: True if on element boundary. (bool)
         '''
         return on_boundary and not (
-            near(x[0], self.dir_min, self.tol) \
-                or near(x[0], self.dir_max, self.tol)
+            near(x[0], self.dir_min, self.tol/2) \
+                or near(x[0], self.dir_max, self.tol/2)
         )
 
 class GammaSlabPi(SubDomain):
