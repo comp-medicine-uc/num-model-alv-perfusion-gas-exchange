@@ -36,7 +36,7 @@ class PerfusionGasExchangeModel():
             for param in self.params:
                 file.write(f'Parameter {param}: {self.params[param]}\n')
 
-    def import_mesh(self, mesh_path, type="h5", periodic=False):
+    def import_mesh(self, mesh_path, type="h5"):
         '''Imports mesh from .h5 file for use in simulations.
 
         mesh_path: path to .h5 file. (string)
@@ -58,7 +58,7 @@ class PerfusionGasExchangeModel():
 
         self.dims = (self.dir_max, self.dir_max, self.dir_max)
 
-        self.periodic = periodic
+        self.periodic = False
 
     def generate_slab_mesh(self, dims, elems, save=True, periodic=False):
         '''Generates a rectangular prism mesh for simulations on a slab.
@@ -81,22 +81,6 @@ class PerfusionGasExchangeModel():
         self.dims = dims
 
         self.periodic = periodic
-
-    def instance_function_spaces(self):
-        '''Instances the relevant function spaces.'''
-
-        if not self.periodic:
-            self.W_h = FunctionSpace(self.mesh, 'Lagrange', 1)
-            self.V_h = VectorFunctionSpace(self.mesh, 'Lagrange', 1)
-        else:
-            self.W_h = FunctionSpace(
-                self.mesh, 'Lagrange', 1,
-                constrained_domain=self.gamma_pi
-            )
-            self.V_h = VectorFunctionSpace(
-                self.mesh, 'Lagrange', 1,
-                constrained_domain=self.gamma_pi
-            )
 
     def instance_boundaries(self, mesh=None):
         '''Instances the relevant boundaries for boundary conditions.
@@ -150,6 +134,22 @@ class PerfusionGasExchangeModel():
             self.gamma_air.mark(self.boundaries, 3)
             self.gamma_pi.mark(self.boundaries, 4)
 
+    def instance_function_spaces(self):
+        '''Instances the relevant function spaces.'''
+
+        if not self.periodic:
+            self.W_h = FunctionSpace(self.mesh, 'Lagrange', 1)
+            self.V_h = VectorFunctionSpace(self.mesh, 'Lagrange', 1)
+        else:
+            self.W_h = FunctionSpace(
+                self.mesh, 'Lagrange', 1,
+                constrained_domain=self.gamma_pi
+            )
+            self.V_h = VectorFunctionSpace(
+                self.mesh, 'Lagrange', 1,
+                constrained_domain=self.gamma_pi
+            )
+
     def generate_cylinder_mesh(self, end, r, save=True):
         '''Generates a cylindrical mesh for simulations on a tube.
 
@@ -168,6 +168,8 @@ class PerfusionGasExchangeModel():
 
         self.dir_min = 0
         self.dir_max = end[0]
+
+        self.periodic = False
 
     def sim_p(self, save=True, meshtype=None):
         '''Solves the perfusion (P) problem of the model.
@@ -237,9 +239,9 @@ class PerfusionGasExchangeModel():
         '''Generation rate as defined in the model.
         
         X: gas species. (string)
-        p_X: partial pressure of X.
-        c_HbX: concentration of Hb(X).
-        c_HbY: concentration of Hb(Y)
+        p_X: partial pressure of X. (FEniCS Function)
+        c_HbX: concentration of Hb(X). (FEniCS Function)
+        c_HbY: concentration of Hb(Y). (FEniCS Function)
         '''
         c_t = self.params['c_t']
         if X == 'O2':
@@ -267,9 +269,9 @@ class PerfusionGasExchangeModel():
         '''Scaled generation rate as defined in the model.
         
         X: gas species. (string)
-        p_X: partial pressure of X.
-        c_HbX: concentration of Hb(X).
-        c_HbY: concentration of Hb(Y)
+        p_X: partial pressure of X. (FEniCS Function)
+        c_HbX: concentration of Hb(X). (FEniCS Function)
+        c_HbY: concentration of Hb(Y). (FEniCS Function)
         '''
         if X == 'O2':
             beta_O2 = self.params['beta_O2']
@@ -294,14 +296,10 @@ class PerfusionGasExchangeModel():
         self.N = num_steps
         dt = self.T/self.N
 
-        beta_O2 = self.params['beta_O2']
-        k_O2 = self.params['k_O2']
-        k_prime_O2 = self.params['k_prime_O2']
         p_air_O2 = self.params['p_air_O2']
         d_ba_O2 = self.params['d_ba_O2']
         d_pla_O2 = self.params['d_pla_O2']
 
-        beta_CO2 = self.params['beta_CO2']
         p_air_CO2 = self.params['p_air_CO2']
         d_ba_CO2 = self.params['d_ba_CO2']
         d_pla_CO2 = self.params['d_pla_CO2']
@@ -312,6 +310,7 @@ class PerfusionGasExchangeModel():
 
         element = VectorElement('P', tetrahedron, 1, dim=4)
         self.M_h = FunctionSpace(self.mesh, element)
+        ds = Measure('ds', domain=self.mesh, subdomain_data=self.boundaries)
 
         # Declare functions and test functions
 
@@ -480,6 +479,7 @@ class PerfusionGasExchangeModel():
 
         element = VectorElement('P', tetrahedron, 1, dim=4)
         self.M_h = FunctionSpace(self.mesh, element)
+        ds = Measure('ds', domain=self.mesh, subdomain_data=self.boundaries)
 
         # Declare functions and test functions
 
