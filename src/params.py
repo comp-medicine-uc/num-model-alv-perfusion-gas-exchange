@@ -7,7 +7,7 @@ __email__ = 'pzurita@uc.cl'
 from dolfin import Constant
 
 
-avg_speed_size = 1000  # (Normal is 1000)
+avg_speed_size = 800  # (Normal is around 800)
 mu = 3.5*0.00750062E-3  # mmHg*s
 kappa = mu*avg_speed_size/4*300  # um^2s
 p_max = 12  # mmHg
@@ -29,9 +29,11 @@ c_t = 2.5E-3/(1E15)  # mol/um^3
 h_ba = 0.3  # um
 
 p_air_O2 = 100  # mmHg
-p_air_CO2 = 0  # mmHg
+p_air_CO2 = 40  # mmHg
 p_O2_in = 40  # mmHg
 p_CO2_in = 45  # mmHg
+c_HbO2_in = 0  # mol/um^3
+c_HbCO2_in = 6.4E-22  #mol/um^3
 
 params = {
     "kappa": kappa,
@@ -53,5 +55,7 @@ params = {
     "p_air_CO2": p_air_CO2,
     "p_O2_in": p_O2_in,
     "p_CO2_in": p_CO2_in,
-    "c_t": c_t
+    "c_t": c_t,
+    "c_HbO2_in": c_HbO2_in,
+    "c_HbCO2_in": c_HbCO2_in,
 }
