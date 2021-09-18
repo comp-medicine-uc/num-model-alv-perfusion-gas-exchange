@@ -32,7 +32,7 @@ p_air_O2 = 100  # mmHg
 p_air_CO2 = 40  # mmHg
 p_O2_in = 40  # mmHg
 p_CO2_in = 45  # mmHg
-c_HbO2_in = 0  # mol/um^3
+c_HbO2_in = 0.69E-13  # mol/um^3
 c_HbCO2_in = 6.4E-22  #mol/um^3
 
 params = {
