@@ -210,6 +210,9 @@ class PerfusionGasExchangeModel():
             self.V_h
         )
 
+        self.u.rename("u", "blood velocity [um/s]")
+        self.p.rename("p", "blood pressure [mmHg]")
+
         if save:
 
             # Save solutions
@@ -219,16 +222,17 @@ class PerfusionGasExchangeModel():
             p_file = File(self.folder_path+'/p/p.pvd')
             p_file << self.p
 
-    def set_u(self, value=(0, 0, 0), save=True):
+    def set_u(self, value=(0, 0, 0), mesh='slab', save=True):
         '''Prescribes a velocity field u to the mesh instead of solving (P).
 
         value: uniform velocity field. (tuple)
         save: saves to vtk. (bool)
         '''
-        self.instance_boundaries()
+        self.instance_boundaries(mesh=mesh)
         self.instance_function_spaces()
 
         self.u = project(Expression(tuple(map(str, value)), degree=1), self.V_h)
+        self.u.rename("u", "Blood velocity")
 
         if save:
 
@@ -567,6 +571,12 @@ class PerfusionGasExchangeModel():
             # Save solution to files
 
             _p_O2, _p_CO2, _c_HbO2, _c_HbCO2 = x.split()
+            _p_O2.rename("p_O2", "oxygen partial pressure [mmHg]")
+            _p_CO2.rename("p_CO2", "carbon dioxide partial pressure [mmHg]")
+            _c_HbO2.rename("c_HbO2", "oxyhemoglobin concentration [mole/um^3]")
+            _c_HbCO2.rename(
+                "c_HbCO2", "carboaminohemoglobin concentration [mole/um^3]"
+            )
             p_O2_file << _p_O2
             p_CO2_file << _p_CO2
             c_HbO2_file << _c_HbO2
