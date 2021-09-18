@@ -549,10 +549,12 @@ class PerfusionGasExchangeModel():
                 self.gamma_in
             ),
             DirichletBC(
-                self.M_h.sub(2), Constant(0), self.gamma_in
+                self.M_h.sub(2), Constant(self.params['c_HbO2_in']),
+                self.gamma_in
             ),
             DirichletBC(
-                self.M_h.sub(3), Constant(0), self.gamma_in
+                self.M_h.sub(3), Constant(self.params['c_HbCO2_in']),
+                self.gamma_in
             )
         ]
 
