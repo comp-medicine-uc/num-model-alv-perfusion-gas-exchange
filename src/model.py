@@ -460,12 +460,13 @@ class PerfusionGasExchangeModel():
                 f'Finished time step {n+1}/{self.N} ({round(t/self.T*100)}%)\n'
             )
 
-    def sim_sbst(self, hb=True, save=True):
+    def sim_sbst(self, hb=True, save=True, solver_parameters=None):
         '''Solves the steady state blood-side transport (SBST) problem of the
         model.
         
         hb: toggle effects of hemoglobin. (bool)
         save: saves to vtk. (bool)
+        solver_parameters: optional FEniCS NLVS parameters. (dict)
         '''
         # Instance parameters
 
@@ -564,7 +565,16 @@ class PerfusionGasExchangeModel():
 
         # Solve variational problem
 
-        solve(G == 0, x, self.sbst_dbc)
+        if solver_parameters:
+            solve(
+                G == 0,
+                x,
+                self.sbst_db,
+                solver_parameters=solver_parameters
+            )
+
+        else:
+            solve(G == 0, x, self.sbst_db)
 
         if save:
 
