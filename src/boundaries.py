@@ -103,7 +103,7 @@ class GammaSlabPi(SubDomain):
         '''
         y[0] = x[0]
         y[1] = x[1]
-        y[2] = x[2] - (self.dir_max - self.dir_min)
+        y[2] = x[2] + 6.0  # (self.dir_max - self.dir_min)
 
 class GammaAirSlabPi(GammaAir):
     '''Alternative subdomain class for \Gamma_{\text{air}} when using

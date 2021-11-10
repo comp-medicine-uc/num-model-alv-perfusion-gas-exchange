@@ -56,7 +56,11 @@ class PerfusionGasExchangeModel():
         self.dir_max = np.max(dir_arr)  # Maximum principal direction coordinate
         self.dir_min = np.min(dir_arr)  # Minimum principal direction coordinate
 
+        # Save mesh dims for other uses
+
         self.dims = (self.dir_max, self.dir_max, self.dir_max)
+
+        # Flag for periodicity
 
         self.periodic = False
 
@@ -66,6 +70,7 @@ class PerfusionGasExchangeModel():
         dims: dimensions of the mesh. (tuple)
         elems: number of elements in each direction. (tuple)
         save: save the generated mesh on a .pvd file. (bool)
+        periodic: use periodic boundary conditions on the z direction. (bool)
         '''
         geometry = BoxMesh(
             Point(0, 0, 0), Point(*dims), *elems
@@ -85,7 +90,7 @@ class PerfusionGasExchangeModel():
     def instance_boundaries(self, mesh=None):
         '''Instances the relevant boundaries for boundary conditions.
         
-        mesh: type of mesh created. None, "slab" or "tkd". (str)
+        mesh: type of mesh created. None, "slab" or "tkd". (None or str)
         '''
 
         # Instance the relevant boundaries
@@ -105,7 +110,7 @@ class PerfusionGasExchangeModel():
             # Declare the boundaries in the mesh and tag them
 
             self.boundaries = MeshFunction('size_t', self.mesh, dim=2)
-            self.boundaries.set_all(3)
+            self.boundaries.set_all(0)
             self.gamma_in.mark(self.boundaries, 1)
             self.gamma_out.mark(self.boundaries, 2)
             self.gamma_air.mark(self.boundaries, 3)
@@ -125,10 +130,11 @@ class PerfusionGasExchangeModel():
                 raise ValueError(
                     "Mesh type must be slab or tkd for periodicity."
                 )
+            
             # Declare the boundaries in the mesh and tag them
 
             self.boundaries = MeshFunction('size_t', self.mesh, dim=2)
-            self.boundaries.set_all(3)
+            self.boundaries.set_all(0)
             self.gamma_in.mark(self.boundaries, 1)
             self.gamma_out.mark(self.boundaries, 2)
             self.gamma_air.mark(self.boundaries, 3)
@@ -384,11 +390,6 @@ class PerfusionGasExchangeModel():
 
         if save:
 
-            #  Write useful comments for the simulation info file
-
-            with open(self.folder_path+'/info.txt', 'w') as file:
-                file.write('Full implicit')  # This should be better
-
             # Create files for output
 
             p_O2_file = File(self.folder_path+'/bst/pO2.pvd')
@@ -460,13 +461,12 @@ class PerfusionGasExchangeModel():
                 f'Finished time step {n+1}/{self.N} ({round(t/self.T*100)}%)\n'
             )
 
-    def sim_sbst(self, hb=True, save=True, solver_parameters=None):
+    def sim_sbst(self, hb=True, save=True, guess=None):
         '''Solves the steady state blood-side transport (SBST) problem of the
         model.
         
         hb: toggle effects of hemoglobin. (bool)
         save: saves to vtk. (bool)
-        solver_parameters: optional FEniCS NLVS parameters. (dict)
         '''
         # Instance parameters
 
@@ -488,7 +488,10 @@ class PerfusionGasExchangeModel():
 
         # Declare functions and test functions
 
-        x = Function(self.M_h)
+        if not guess:
+            x = Function(self.M_h)
+        else:
+            x = project(guess, self.M_h)
         self.p_O2, self.p_CO2, self.c_HbO2, self.c_HbCO2 = split(x)
 
         v, w, eta, xi = TestFunctions(self.M_h)
@@ -531,11 +534,6 @@ class PerfusionGasExchangeModel():
 
         if save:
 
-            #  Write useful comments for the simulation info file
-
-            with open(self.folder_path+'/info.txt', 'w') as file:
-                file.write('Full implicit')  # This should be better
-
             # Create files for output
 
             p_O2_file = File(self.folder_path+'/sbst/pO2.pvd')
@@ -565,16 +563,13 @@ class PerfusionGasExchangeModel():
 
         # Solve variational problem
 
-        if solver_parameters:
-            solve(
-                G == 0,
-                x,
-                self.sbst_db,
-                solver_parameters=solver_parameters
-            )
-
-        else:
-            solve(G == 0, x, self.sbst_db)
+        solve(
+            G == 0, x, self.sbst_dbc,
+            solver_parameters={"newton_solver": {
+                "relative_tolerance": 1E-9,
+                "absolute_tolerance": 1E-8
+            }}
+        )
 
         if save:
 
@@ -591,3 +586,46 @@ class PerfusionGasExchangeModel():
             p_CO2_file << _p_CO2
             c_HbO2_file << _c_HbO2
             c_HbCO2_file << _c_HbCO2
+
+        return x
+
+    def avg_field_along_dir(self, u_0, n):
+        '''Calculates an average field along a certain direction for a slab
+        mesh. Specifically, defines the function v(x) = int_{S(x)} u_0 ds where
+        S(x) = {(x1, y2, y3) | y2, y3 in [0, 6]}.
+
+        u_0: field. (FEniCS Function)
+        n: number of slices (more than 1) (discretization of x). (int)
+        '''
+        # https://mscroggs.github.io/qa/3257/
+        # building-2d-function-g-x-y-from-a-3d-function-f-x-y-z-constant/
+
+        x_arr = np.linspace(0.0, self.dir_max - self.dir_min, n)
+        v = np.zeros((n,))
+
+        # Create boundary mesh
+        bmesh = BoundaryMesh(self.mesh, "exterior")
+
+        # Create SubMesh for side at z=0
+        # This will be a UnitSquareMesh with topology dimension 2 in 3 space dimensions
+        cc = MeshFunction('size_t', bmesh, dim=2)
+        xyplane = AutoSubDomain(lambda x: x[0] < 1e-8)
+        xyplane.mark(cc, 6)
+        submesh = SubMesh(bmesh, cc, 6)
+
+        for i in range(n):
+
+            # Move slice/submesh to z=0.5
+            x = submesh.coordinates()
+            x[:, 2] += x_arr[i]
+
+            # Create a FunctionSpace on the submesh
+            Vs = FunctionSpace(submesh, "Lagrange", 1)
+
+            # interpolate_nonmatching_mesh required in parallel, 
+            # interpolate works in series
+            #us = interpolate_nonmatching_mesh(u, Vs)
+            us = interpolate(u_0, Vs)
+            v[i] = assemble(us*dx)
+
+        return [v, x]
