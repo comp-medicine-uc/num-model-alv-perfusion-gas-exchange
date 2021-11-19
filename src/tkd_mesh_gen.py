@@ -67,9 +67,11 @@ def TKD_generator(
     octahedron = up_left*up_right*up_front*up_back\
         *bot_left*bot_right*bot_front*bot_back
 
+    scale = 1 + 1/3
+
     cube = OrthoBrick(
-        Pnt(-R*1.2, -R*1.2, -R*1.2),
-        Pnt(R*1.2, R*1.2, R*1.2)
+        Pnt(-R*scale, -R*scale, -R*scale),
+        Pnt(R*scale, R*scale, R*scale)
     )
 
     mini_up_left = Plane(p[5], n[1])
@@ -86,8 +88,8 @@ def TKD_generator(
         *mini_bot_left*mini_bot_right*mini_bot_front*mini_bot_back
 
     mini_cube = OrthoBrick(
-        Pnt((-R+h)*1.2, (-R+h)*1.2, (-R+h)*1.2),
-        Pnt((R-h)*1.2, (R-h)*1.2, (R-h)*1.2)
+        Pnt((-R+h)*scale, (-R+h)*scale, (-R+h)*scale),
+        Pnt((R-h)*scale, (R-h)*scale, (R-h)*scale)
     )
 
     hole = mini_octahedron*mini_cube
@@ -166,4 +168,4 @@ def TKD_mesher(maxh=2, save=True, name='./raw-data/TKD', convert=True):
     return mesh
 
 if __name__ == '__main__':
-    TKD_mesher(maxh=10, save=True, name='./raw-data/TKD_test', convert=True)
+    TKD_mesher(maxh=10, save=True, name='TKD_test', convert=True)
