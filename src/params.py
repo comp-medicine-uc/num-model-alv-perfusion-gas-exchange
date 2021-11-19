@@ -16,7 +16,15 @@ p_min = 8  # mmHg
 d_pla_O2 = 1.62E-5*1E8  # um^2/s
 d_ba_O2 = 1E-5*1E8  # um^2/s
 beta_O2 = 0.9*1.41E-6/(1E15) # mol/um^3/mmHg
-k_O2 = 20 # 40  # 1/s
+
+
+# Manually set value!
+# Normal value
+#k_O2 = 20 # 40  # 1/s
+# Set value
+k_O2 = 29
+
+
 k_prime_O2 = 2.85E21 # 66E-6*1E15  # um^3/mol/s
 
 d_pla_CO2 = 1E-5*1E8  # um^2/s

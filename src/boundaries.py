@@ -1,8 +1,9 @@
+'''Boundary classes for alveolar perfusion and gas exchange simulations.
 '''
-Boundary classes for alveolar perfusion and gas exchange simulations.
 
-@author pzuritas
-'''
+__author__ = 'pzuritas'
+__email__ = 'pzurita@uc.cl'
+
 from dolfin import *
 
 

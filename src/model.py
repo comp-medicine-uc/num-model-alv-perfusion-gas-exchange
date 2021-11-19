@@ -36,10 +36,11 @@ class PerfusionGasExchangeModel():
             for param in self.params:
                 file.write(f'Parameter {param}: {self.params[param]}\n')
 
-    def import_mesh(self, mesh_path, type="h5"):
+    def import_mesh(self, mesh_path, type="h5", periodic=False):
         '''Imports mesh from .h5 file for use in simulations.
 
         mesh_path: path to .h5 file. (string)
+        periodic: use periodic boundary conditions. (bool)
         '''
         if type == "h5":
             hdf5 = HDF5File(MPI.comm_world, mesh_path, 'r')
@@ -62,7 +63,7 @@ class PerfusionGasExchangeModel():
 
         # Flag for periodicity
 
-        self.periodic = False
+        self.periodic = True
 
     def generate_slab_mesh(self, dims, elems, save=True, periodic=False):
         '''Generates a rectangular prism mesh for simulations on a slab.
@@ -181,6 +182,7 @@ class PerfusionGasExchangeModel():
         '''Solves the perfusion (P) problem of the model.
         
         save: saves to vtk. (bool)
+        meshtype: type of mesh. None, "slab" or "tkd". (None or str)
         '''
         self.instance_boundaries(mesh=meshtype)
         self.instance_function_spaces()
