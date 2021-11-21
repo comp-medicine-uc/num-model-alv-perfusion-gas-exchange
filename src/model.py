@@ -121,6 +121,9 @@ class PerfusionGasExchangeModel():
                 self.gamma_pi = GammaSlabPi(0, self.dims[2], DOLFIN_EPS)
                 self.gamma_air = GammaAirSlabPi(0, self.dims[1], DOLFIN_EPS)
             elif mesh == "tkd":
+                self.gamma_out = GammaTKDOut(
+                    self.dir_min, self.dir_max, DOLFIN_EPS
+                )
                 self.gamma_pi = GammaTKDPi(
                     -self.dims[0], self.dims[0], DOLFIN_EPS
                 )
