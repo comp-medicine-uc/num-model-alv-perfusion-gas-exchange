@@ -39,7 +39,7 @@ class PerfusionGasExchangeModel():
     def import_mesh(self, mesh_path, type="h5", periodic=False):
         '''Imports mesh from .h5 file for use in simulations.
 
-        mesh_path: path to .h5 file. (string)
+        mesh_path: path to file. (string)
         periodic: use periodic boundary conditions. (bool)
         '''
         if type == "h5":
@@ -48,6 +48,10 @@ class PerfusionGasExchangeModel():
             hdf5.read(self.mesh, 'mesh', False)
         elif type == "xml":
             self.mesh = Mesh(mesh_path)
+        elif type == "xdmf":
+            self.mesh = Mesh()
+            with XDMFFile(mesh_path) as infile:
+                infile.read(self.mesh)
         else:
             raise ValueError("type of mesh should be h5 or xml")
 
@@ -93,6 +97,8 @@ class PerfusionGasExchangeModel():
         
         mesh: type of mesh created. None, "slab" or "tkd". (None or str)
         '''
+
+        self.meshtype = mesh
 
         # Instance the relevant boundaries
 
@@ -534,6 +540,52 @@ class PerfusionGasExchangeModel():
         else:
             G_c_O2 = self.c_HbO2*eta*dx
             G_c_CO2 = self.c_HbCO2*xi*dx
+
+        if self.meshtype == 'tkd':
+            # Define outlet boundary condition for gases
+            c = 200/3
+            x_hat_1 = project(Expression(
+                'x[1]', degree=2
+            ), self.W_h)
+            file = File(self.folder_path+'/test-bc/x_hat_1.pvd')
+            file << x_hat_1
+            x_hat_2 = project(Expression(
+                'x[2]', degree=2
+            ), self.W_h)
+            file = File(self.folder_path+'/test-bc/x_hat_2.pvd')
+            file << x_hat_2
+            x_hat_1_norm = project(abs(x_hat_1) + abs(x_hat_2), self.W_h)
+            file = File(self.folder_path+'/test-bc/x_hat_1_norm.pvd')
+            file << x_hat_1_norm
+            n_expr = project(
+                Expression(
+                    ('1', '0', '0'), degree=2
+                ), self.V_h
+            )
+            x_hat = project(Expression(
+                ('0', 'x[1]', 'x[2]'), degree=2
+            ), self.V_h)
+            x_hat_normed = project(x_hat/inner(x_hat, x_hat)**0.5, self.V_h)
+            file = File(self.folder_path+'/test-bc/x_hat_normed.pvd')
+            file << x_hat_normed
+            n_min_x_hat = project(n_expr - x_hat_normed, self.V_h)
+            file = File(self.folder_path+'/test-bc/x_hat.pvd')
+            file << x_hat
+            file = File(self.folder_path+'/test-bc/n_min_x_hat.pvd')
+            file << n_min_x_hat
+            norm_n_x_hat = project(
+                inner(n_min_x_hat, n_min_x_hat)**(1/2),
+                self.W_h
+            )
+            weight = project(
+                1/(
+                    x_hat_1_norm/c/norm_n_x_hat + 1 - x_hat_1_norm/c
+                )*(
+                    x_hat_1_norm/c/norm_n_x_hat
+                ), self.W_h
+            )
+            G_p_O2 += weight*d_pla_O2*inner(grad(self.p_O2), x_hat)*v*ds(2)
+            G_p_CO2 += weight*d_pla_CO2*inner(grad(self.p_CO2), x_hat)*w*ds(2)
 
         G = G_p_O2 + G_p_CO2 + G_c_O2 + G_c_CO2
 
