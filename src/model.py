@@ -67,7 +67,7 @@ class PerfusionGasExchangeModel():
 
         # Flag for periodicity
 
-        self.periodic = True
+        self.periodic = periodic
 
     def generate_slab_mesh(self, dims, elems, save=True, periodic=False):
         '''Generates a rectangular prism mesh for simulations on a slab.
@@ -102,31 +102,56 @@ class PerfusionGasExchangeModel():
 
         # Instance the relevant boundaries
 
-        self.gamma_in = GammaIn(
-            self.dir_min, self.dir_max, DOLFIN_EPS
-        )
-        self.gamma_out = GammaOut(
-            self.dir_min, self.dir_max, DOLFIN_EPS
-        )
-
         if not self.periodic:
-            self.gamma_air = GammaAir(
-                self.dir_min, self.dir_max, DOLFIN_EPS
-            )
+            if not mesh == "sphere":
+                self.gamma_in = GammaIn(
+                    self.dir_min, self.dir_max, DOLFIN_EPS
+                )
+                self.gamma_out = GammaOut(
+                    self.dir_min, self.dir_max, DOLFIN_EPS
+                )
+                self.gamma_air = GammaAir(
+                    self.dir_min, self.dir_max, DOLFIN_EPS
+                )
 
-            # Declare the boundaries in the mesh and tag them
+                # Declare the boundaries in the mesh and tag them
 
-            self.boundaries = MeshFunction('size_t', self.mesh, dim=2)
-            self.boundaries.set_all(0)
-            self.gamma_in.mark(self.boundaries, 1)
-            self.gamma_out.mark(self.boundaries, 2)
-            self.gamma_air.mark(self.boundaries, 3)
+                self.boundaries = MeshFunction('size_t', self.mesh, dim=2)
+                self.boundaries.set_all(0)
+                self.gamma_in.mark(self.boundaries, 1)
+                self.gamma_out.mark(self.boundaries, 2)
+                self.gamma_air.mark(self.boundaries, 3)
+
+            elif mesh == "sphere":
+                self.gamma_in = GammaInSphereV2(220)
+                self.gamma_out = GammaOutSphereV2(220)
+                self.gamma_air = GammaAirSphereV2(211.99)
+
+                # Declare the boundaries in the mesh and tag them
+
+                self.boundaries = MeshFunction('size_t', self.mesh, dim=2)
+                self.boundaries.set_all(0)
+                self.gamma_in.mark(self.boundaries, 1)
+                self.gamma_out.mark(self.boundaries, 2)
+                self.gamma_air.mark(self.boundaries, 3)
 
         else:
             if mesh == "slab":
+                self.gamma_in = GammaIn(
+                    self.dir_min, self.dir_max, DOLFIN_EPS
+                )
+                self.gamma_out = GammaOut(
+                    self.dir_min, self.dir_max, DOLFIN_EPS
+                )
                 self.gamma_pi = GammaSlabPi(0, self.dims[2], DOLFIN_EPS)
                 self.gamma_air = GammaAirSlabPi(0, self.dims[1], DOLFIN_EPS)
             elif mesh == "tkd":
+                self.gamma_in = GammaIn(
+                    self.dir_min, self.dir_max, DOLFIN_EPS
+                )
+                self.gamma_out = GammaOut(
+                    self.dir_min, self.dir_max, DOLFIN_EPS
+                )
                 self.gamma_out = GammaTKDOut(
                     self.dir_min, self.dir_max, DOLFIN_EPS
                 )
@@ -154,11 +179,11 @@ class PerfusionGasExchangeModel():
         '''Instances the relevant function spaces.'''
 
         if not self.periodic:
-            self.W_h = FunctionSpace(self.mesh, 'Lagrange', 1)
+            self.W_h = FunctionSpace(self.mesh, 'Lagrange', 2)
             self.V_h = VectorFunctionSpace(self.mesh, 'Lagrange', 1)
         else:
             self.W_h = FunctionSpace(
-                self.mesh, 'Lagrange', 1,
+                self.mesh, 'Lagrange', 2,
                 constrained_domain=self.gamma_pi
             )
             self.V_h = VectorFunctionSpace(
@@ -623,8 +648,10 @@ class PerfusionGasExchangeModel():
         solve(
             G == 0, x, self.sbst_dbc,
             solver_parameters={"newton_solver": {
-                "relative_tolerance": 1E-9,
-                "absolute_tolerance": 1E-8
+                "relative_tolerance": 1E-8,
+                "absolute_tolerance": 1E-8,
+                "linear_solver": "gmres",
+                "preconditioner": "ilu"
             }}
         )
 
