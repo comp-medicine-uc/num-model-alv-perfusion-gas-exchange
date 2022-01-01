@@ -7,9 +7,8 @@ __email__ = 'pzurita@uc.cl'
 from dolfin import Constant
 
 
-avg_speed_size = 800  # (Normal is around 800)
 mu = 3.5*0.00750062E-3  # mmHg*s
-kappa = mu*avg_speed_size/4*300  # um^2s
+kappa = mu*9000 #mu*30000  # um^2s
 p_max = 12  # mmHg
 p_min = 8  # mmHg
 
