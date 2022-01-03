@@ -5,7 +5,7 @@ sys.path.append(os.getcwd()[:-6])
 from src.model import PerfusionGasExchangeModel
 from src.params import params
 
-mesh_path = "sphere_fine.xml"
+mesh_path = "../raw-data/sphere_fine.xml"
 folder = "sphere_fine_sims"
 path = os.path.join("../raw-data", folder)
 model = PerfusionGasExchangeModel(folder_path=path, params=params)
