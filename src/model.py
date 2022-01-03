@@ -10,7 +10,7 @@ from datetime import date
 import numpy as np
 from fenics import *
 from dolfin import *
-from mshr import Cylinder, generate_mesh
+#from mshr import Cylinder, generate_mesh
 from src.boundaries import *
 
 
@@ -224,8 +224,8 @@ class PerfusionGasExchangeModel():
         # Declare Dirichlet boundary conditions for (P)
 
         self.p_dbc = [
-            DirichletBC(self.W_h, self.params['p_max'], self.gamma_in),
-            DirichletBC(self.W_h, self.params['p_min'], self.gamma_out),
+            DirichletBC(self.W_h, self.params['p_max'], self.gamma_in)#,
+            #DirichletBC(self.W_h, self.params['p_min'], self.gamma_out),
         ]
 
         # Assemble problem
@@ -235,6 +235,7 @@ class PerfusionGasExchangeModel():
         f = Constant(0)
         a = inner(grad(p), grad(v))*dx
         F = f*v*dx
+        F += -400*self.params["mu"]/self.params["kappa"]*v*ds(2)  # Alternative
 
         # Solve problem
 
