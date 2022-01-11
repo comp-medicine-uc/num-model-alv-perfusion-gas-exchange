@@ -36,7 +36,7 @@ class PerfusionGasExchangeModel():
             for param in self.params:
                 file.write(f'Parameter {param}: {self.params[param]}\n')
 
-    def import_mesh(self, mesh_path, type="h5", periodic=False):
+    def import_mesh(self, mesh_path, meshtype, type="h5", periodic=False):
         '''Imports mesh from .h5 file for use in simulations.
 
         mesh_path: path to file. (string)
@@ -55,6 +55,34 @@ class PerfusionGasExchangeModel():
         else:
             raise ValueError("type of mesh should be h5 or xml")
 
+        if meshtype == 'sphere':
+            marker = MeshFunction('bool', self.mesh, dim=3)
+            marker.set_all(False)
+            for cell in cells(self.mesh):
+                coords = cell.get_vertex_coordinates()
+                for i, coord in enumerate(coords):
+                    if i % 3 == 0 and (coord < -40 or coord > 45):
+                        marker[cell] = True
+            self.mesh = refine(self.mesh, marker)
+
+        if meshtype == 'tkd':
+            # Scale mesh to radius 50
+            x = self.mesh.coordinates()
+            scaling_factor = 0.5
+            x[:, :] *= scaling_factor
+            # Smooth mesh
+            print('Smoothing mesh')
+            self.mesh.smooth(100)
+            # Refine at inlet/outlet
+            marker = MeshFunction('bool', self.mesh, dim=3)
+            marker.set_all(False)
+            for cell in cells(self.mesh):
+                coords = cell.get_vertex_coordinates()
+                for i, coord in enumerate(coords):
+                    if i % 3 == 0 and (coord < -40 or coord > 45):
+                        marker[cell] = True
+            self.mesh = refine(self.mesh, marker)
+
         dir_arr = np.array(
                 [coords[0] for coords in self.mesh.coordinates()]
             )  # Node coordinates for principal (x) direction
@@ -69,7 +97,9 @@ class PerfusionGasExchangeModel():
 
         self.periodic = periodic
 
-    def generate_slab_mesh(self, dims, elems, save=True, periodic=False):
+    def generate_slab_mesh(
+        self, dims, elems, save=True, periodic=False, refined=True
+    ):
         '''Generates a rectangular prism mesh for simulations on a slab.
 
         dims: dimensions of the mesh. (tuple)
@@ -81,6 +111,23 @@ class PerfusionGasExchangeModel():
             Point(0, 0, 0), Point(*dims), *elems
         )
         self.mesh = geometry
+
+        if refined:
+            marker = MeshFunction('bool', self.mesh, dim=3)
+            marker.set_all(False)
+            for cell in cells(self.mesh):
+                coords = cell.get_vertex_coordinates()
+                for i, coord in enumerate(coords):
+                    if i % 3 == 0 and coord < -50:
+                        marker[cell] = True
+            self.mesh = refine(self.mesh, marker)
+            #for cell in cells(self.mesh):
+            #    coords = cell.get_vertex_coordinates()
+            #    for i, coord in enumerate(coords):
+            #        if i % 3 == 0 and coord < -75:
+            #            marker[cell] = True
+            #self.mesh = refine(self.mesh, marker)
+
         mesh_file = File(self.folder_path+'/mesh.pvd')
         mesh_file << self.mesh
         
@@ -123,9 +170,16 @@ class PerfusionGasExchangeModel():
                 self.gamma_air.mark(self.boundaries, 3)
 
             elif mesh == "sphere":
-                self.gamma_in = GammaInSphereV2(220)
-                self.gamma_out = GammaOutSphereV2(220)
-                self.gamma_air = GammaAirSphereV2(211.99)
+
+                ## large sphere
+                #self.gamma_in = GammaInSphereV2(220)
+                #self.gamma_out = GammaOutSphereV2(220)
+                #self.gamma_air = GammaAirSphereV2(211.99)
+
+                ## small sphere
+                self.gamma_in = GammaInSphereV2(60)
+                self.gamma_out = GammaOutSphereV2(60)
+                self.gamma_air = GammaAirSphereV2(58)
 
                 # Declare the boundaries in the mesh and tag them
 
@@ -224,19 +278,64 @@ class PerfusionGasExchangeModel():
         # Declare Dirichlet boundary conditions for (P)
 
         self.p_dbc = [
-            DirichletBC(self.W_h, self.params['p_max'], self.gamma_in)#,
-            #DirichletBC(self.W_h, self.params['p_min'], self.gamma_out),
+            #DirichletBC(self.W_h, self.params['p_max'], self.gamma_in)#,
+            DirichletBC(self.W_h, self.params['p_min'], self.gamma_out)
         ]
 
         # Assemble problem
 
+        ds = Measure('ds', domain=self.mesh, subdomain_data=self.boundaries)
+
         p = TrialFunction(self.W_h)
         v = TestFunction(self.W_h)
-        f = Constant(0)
         a = inner(grad(p), grad(v))*dx
-        F = f*v*dx
-        F += -400*self.params["mu"]/self.params["kappa"]*v*ds(2)  # Alternative
-
+        F = Constant(0)*v*dx
+        if self.meshtype == 'sphere':
+            F += 200*self.params["mu"]/self.params["kappa"]*v*ds(1)
+        elif self.meshtype == 'tkd':
+            c = 100/3
+            x_hat_1 = project(Expression(
+                'x[1]', degree=2
+            ), self.W_h)
+            file = File(self.folder_path+'/test-bc/x_hat_1.pvd')
+            file << x_hat_1
+            x_hat_2 = project(Expression(
+                'x[2]', degree=2
+            ), self.W_h)
+            file = File(self.folder_path+'/test-bc/x_hat_2.pvd')
+            file << x_hat_2
+            x_hat_1_norm = project(abs(x_hat_1) + abs(x_hat_2), self.W_h)
+            file = File(self.folder_path+'/test-bc/x_hat_1_norm.pvd')
+            file << x_hat_1_norm
+            n_expr = project(
+                Expression(
+                    ('1', '0', '0'), degree=2
+                ), self.V_h
+            )
+            x_hat = project(Expression(
+                ('0', 'x[1]', 'x[2]'), degree=2
+            ), self.V_h)
+            x_hat_normed = project(x_hat/inner(x_hat, x_hat)**0.5, self.V_h)
+            file = File(self.folder_path+'/test-bc/x_hat_normed.pvd')
+            file << x_hat_normed
+            n_min_x_hat = project(n_expr - x_hat_normed, self.V_h)
+            file = File(self.folder_path+'/test-bc/x_hat.pvd')
+            file << x_hat
+            file = File(self.folder_path+'/test-bc/n_min_x_hat.pvd')
+            file << n_min_x_hat
+            norm_n_x_hat = project(
+                inner(n_min_x_hat, n_min_x_hat)**(1/2),
+                self.W_h
+            )
+            weight = project(
+                1/(
+                    x_hat_1_norm/c/norm_n_x_hat + 1 - x_hat_1_norm/c
+                )*(
+                    x_hat_1_norm/c/norm_n_x_hat
+                ), self.W_h
+            )
+            F += weight*200*self.params["mu"]/self.params["kappa"]*v*ds(1)
+        
         # Solve problem
 
         self.p = Function(self.W_h)
@@ -569,7 +668,7 @@ class PerfusionGasExchangeModel():
 
         if self.meshtype == 'tkd':
             # Define outlet boundary condition for gases
-            c = 200/3
+            c = 100/3
             x_hat_1 = project(Expression(
                 'x[1]', degree=2
             ), self.W_h)
@@ -650,9 +749,9 @@ class PerfusionGasExchangeModel():
             G == 0, x, self.sbst_dbc,
             solver_parameters={"newton_solver": {
                 "relative_tolerance": 1E-8,
-                "absolute_tolerance": 1E-8,
-                "linear_solver": "gmres",
-                "preconditioner": "ilu"
+                "absolute_tolerance": 1E-8#,
+                #"linear_solver": "gmres",
+                #"preconditioner": "ilu"
             }}
         )
 
