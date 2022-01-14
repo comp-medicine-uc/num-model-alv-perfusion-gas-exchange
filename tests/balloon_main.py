@@ -16,7 +16,10 @@ from src.params import params
 folder = "sphere_job"
 path = os.path.join("../raw-data", folder)
 model = PerfusionGasExchangeModel(folder_path=path, params=params)
-model.import_mesh(os.path.join("../raw-data", "sphere_small.xml"), type="xml")
+model.import_mesh(
+    os.path.join("../raw-data", "sphere_small.xml"), meshtype='sphere',
+    type="xml"
+)
 model.mesh = dolfin.refine(model.mesh)
 model.mesh = dolfin.refine(model.mesh)
 model.sim_p(save=True, meshtype="sphere")
