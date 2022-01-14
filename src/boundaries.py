@@ -27,7 +27,7 @@ class GammaIn(SubDomain):
         x: position.
         on_boundary: True if on element boundary. (bool)
         '''
-        return near(x[0], self.dir_min, self.tol)
+        return on_boundary and near(x[0], self.dir_min, self.tol)
 
 class GammaOut(SubDomain):
     '''Subdomain class for boundary conditions.'''
@@ -48,7 +48,7 @@ class GammaOut(SubDomain):
         x: position.
         on_boundary: True if on element boundary. (bool)
         '''
-        return near(x[0], self.dir_max, self.tol)
+        return on_boundary and near(x[0], self.dir_max, self.tol)
 
 class GammaAir(SubDomain):
     '''Subdomain class for boundary conditions.'''
@@ -191,14 +191,40 @@ class GammaAirTKD(SubDomain):
         on_boundary: True if on element boundary. (bool)
         '''
         return on_boundary and not (
-            near(x[0], self.dir_max, self.tol) \
-                or near(x[0], self.dir_max, self.tol)
+            (x[0] < -45 and near(
+            abs(x[1]) + abs(x[2]), 100/3/sqrt(2), self.tol
+        )) or (x[0] > 45 and near(
+            abs(x[1]) + abs(x[2]), 100/3/sqrt(2), self.tol
+        ))
         ) and not (
             near(x[1], self.dir_min, self.tol) \
                 or near(x[1], self.dir_max, self.tol)
         ) and not (
             near(x[2], self.dir_min, self.tol) \
                 or near(x[2], self.dir_max, self.tol)
+        )
+
+class GammaTKDIn(SubDomain):
+    '''Subdomain class for boundary conditions on TKD to avoid singularities.'''
+    def __init__(self, dir_min, dir_max, tol):
+        '''Instance the subdomain.
+        
+        dir_min: minimum value of flow direction. (float)
+        dir_max: maximum value of flow direction. (float)
+        tol: tolerance for numerical roundoff in element tagging. (float)
+        '''
+        super().__init__()
+        self.dir_min = dir_min
+        self.dir_max = dir_max
+        self.tol = tol
+    def inside(self, x, on_boundary):
+        '''Checks if position is on subdomain.
+        
+        x: position.
+        on_boundary: True if on element boundary. (bool)
+        '''
+        return on_boundary and x[0] < -45 and near(
+            abs(x[1]) + abs(x[2]), 100/3/sqrt(2), self.tol
         )
 
 class GammaTKDOut(SubDomain):
@@ -220,9 +246,9 @@ class GammaTKDOut(SubDomain):
         x: position.
         on_boundary: True if on element boundary. (bool)
         '''
-        return near(x[0], self.dir_max, self.tol) #and (
-        #    abs(x[1]) + abs(x[2]) < 60
-        #)
+        return on_boundary and x[0] > 45 and near(
+            abs(x[1]) + abs(x[2]), 100/3/sqrt(2), self.tol
+        )
 
 class GammaInSphere(SubDomain):
     '''Subdomain class for boundary conditions.'''
@@ -270,7 +296,7 @@ class GammaOutSphere(SubDomain):
         distance_to_outer_sphere = (
             (x[0] - center)**2 + x[1]**2 + x[2]**2
         )**0.5
-        return near(distance_to_outer_sphere, radius, self.tol)
+        return on_boundary and near(distance_to_outer_sphere, radius, self.tol)
 
 class GammaAirSphere(SubDomain):
     '''Subdomain class for boundary conditions.'''

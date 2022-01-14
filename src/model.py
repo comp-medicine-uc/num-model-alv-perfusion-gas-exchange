@@ -66,20 +66,12 @@ class PerfusionGasExchangeModel():
             self.mesh = refine(self.mesh, marker)
 
         if meshtype == 'tkd':
-            # Scale mesh to radius 50
-            x = self.mesh.coordinates()
-            scaling_factor = 0.5
-            x[:, :] *= scaling_factor
-            # Smooth mesh
-            print('Smoothing mesh')
-            self.mesh.smooth(100)
-            # Refine at inlet/outlet
             marker = MeshFunction('bool', self.mesh, dim=3)
             marker.set_all(False)
             for cell in cells(self.mesh):
                 coords = cell.get_vertex_coordinates()
                 for i, coord in enumerate(coords):
-                    if i % 3 == 0 and (coord < -40 or coord > 45):
+                    if i % 3 == 0 and (coord < -43 or coord > 45):
                         marker[cell] = True
             self.mesh = refine(self.mesh, marker)
 
@@ -121,12 +113,6 @@ class PerfusionGasExchangeModel():
                     if i % 3 == 0 and coord < -50:
                         marker[cell] = True
             self.mesh = refine(self.mesh, marker)
-            #for cell in cells(self.mesh):
-            #    coords = cell.get_vertex_coordinates()
-            #    for i, coord in enumerate(coords):
-            #        if i % 3 == 0 and coord < -75:
-            #            marker[cell] = True
-            #self.mesh = refine(self.mesh, marker)
 
         mesh_file = File(self.folder_path+'/mesh.pvd')
         mesh_file << self.mesh
@@ -200,21 +186,31 @@ class PerfusionGasExchangeModel():
                 self.gamma_pi = GammaSlabPi(0, self.dims[2], DOLFIN_EPS)
                 self.gamma_air = GammaAirSlabPi(0, self.dims[1], DOLFIN_EPS)
             elif mesh == "tkd":
-                self.gamma_in = GammaIn(
-                    self.dir_min, self.dir_max, DOLFIN_EPS
-                )
-                self.gamma_out = GammaOut(
-                    self.dir_min, self.dir_max, DOLFIN_EPS
+                #self.gamma_in = GammaIn(
+                #    self.dir_min, self.dir_max, 1
+                #)
+                #self.gamma_out = GammaOut(
+                #    self.dir_min, self.dir_max, 1
+                #)
+                self.gamma_in = GammaTKDIn(
+                    self.dir_min, self.dir_max, 1E0
                 )
                 self.gamma_out = GammaTKDOut(
-                    self.dir_min, self.dir_max, DOLFIN_EPS
+                    self.dir_min, self.dir_max, 1E0
                 )
                 self.gamma_pi = GammaTKDPi(
-                    -self.dims[0], self.dims[0], DOLFIN_EPS
+                    self.dir_min, self.dir_max, 1E0
                 )
                 self.gamma_air = GammaAirTKD(
-                    -self.dims[0], self.dims[0], DOLFIN_EPS
+                    self.dir_min, self.dir_max, 3.9599E-8
                 )
+                gamma_outish = GammaTKDOut(
+                    self.dir_min, self.dir_max, 1E1
+                )
+                refine_out = MeshFunction('bool', self.mesh, dim=3)
+                refine_out.set_all(False)
+                gamma_outish.mark(refine_out, True)
+                self.mesh = refine(self.mesh, refine_out)
             else:
                 raise ValueError(
                     "Mesh type must be slab or tkd for periodicity."
@@ -228,6 +224,9 @@ class PerfusionGasExchangeModel():
             self.gamma_out.mark(self.boundaries, 2)
             self.gamma_air.mark(self.boundaries, 3)
             self.gamma_pi.mark(self.boundaries, 4)
+
+            boundaries = File(self.folder_path+'/bnd/bnd.pvd')
+            boundaries << self.boundaries
 
     def instance_function_spaces(self):
         '''Instances the relevant function spaces.'''
@@ -290,8 +289,9 @@ class PerfusionGasExchangeModel():
         v = TestFunction(self.W_h)
         a = inner(grad(p), grad(v))*dx
         F = Constant(0)*v*dx
-        if self.meshtype == 'sphere':
-            F += 200*self.params["mu"]/self.params["kappa"]*v*ds(1)
+        #if self.meshtype == 'sphere':
+        F += 200*self.params["mu"]/self.params["kappa"]*v*ds(1)
+        '''
         elif self.meshtype == 'tkd':
             c = 100/3
             x_hat_1 = project(Expression(
@@ -335,7 +335,8 @@ class PerfusionGasExchangeModel():
                 ), self.W_h
             )
             F += weight*200*self.params["mu"]/self.params["kappa"]*v*ds(1)
-        
+        '''
+
         # Solve problem
 
         self.p = Function(self.W_h)
@@ -666,6 +667,7 @@ class PerfusionGasExchangeModel():
             G_c_O2 = self.c_HbO2*eta*dx
             G_c_CO2 = self.c_HbCO2*xi*dx
 
+        '''
         if self.meshtype == 'tkd':
             # Define outlet boundary condition for gases
             c = 100/3
@@ -711,6 +713,7 @@ class PerfusionGasExchangeModel():
             )
             G_p_O2 += weight*d_pla_O2*inner(grad(self.p_O2), x_hat)*v*ds(2)
             G_p_CO2 += weight*d_pla_CO2*inner(grad(self.p_CO2), x_hat)*w*ds(2)
+        '''
 
         G = G_p_O2 + G_p_CO2 + G_c_O2 + G_c_CO2
 

@@ -1,4 +1,4 @@
-'''Main file for alveolar perfusion and gas exchange simulations in spherical
+'''Main file for alveolar perfusion and gas exchange simulations in a sheet
 mesh.
 '''
 
@@ -13,12 +13,14 @@ from src.model import PerfusionGasExchangeModel
 from src.params import params
 
 
-folder = "sphere_job"
+folder = "slab_job"
 path = os.path.join("../raw-data", folder)
 model = PerfusionGasExchangeModel(folder_path=path, params=params)
-model.import_mesh(os.path.join("../raw-data", "sphere_small.xml"), type="xml")
+model.generate_slab_mesh(
+    dims=(200, 6, 6), elems=(200, 6, 6), save=True, periodic=True, refined=True
+)
 model.mesh = dolfin.refine(model.mesh)
 model.mesh = dolfin.refine(model.mesh)
-model.sim_p(save=True, meshtype="sphere")
+model.set_u(value=(800/3, 0, 0), save=True)
 x = model.sim_sbst(hb=False, save=False)
 solution = model.sim_sbst(hb=True, save=True, guess=x)
