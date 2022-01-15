@@ -225,8 +225,8 @@ class PerfusionGasExchangeModel():
             self.gamma_air.mark(self.boundaries, 3)
             self.gamma_pi.mark(self.boundaries, 4)
 
-            boundaries = File(self.folder_path+'/bnd/bnd.pvd')
-            boundaries << self.boundaries
+        boundaries = File(self.folder_path+'/bnd/bnd.pvd')
+        boundaries << self.boundaries
 
     def instance_function_spaces(self):
         '''Instances the relevant function spaces.'''
@@ -752,9 +752,9 @@ class PerfusionGasExchangeModel():
             G == 0, x, self.sbst_dbc,
             solver_parameters={"newton_solver": {
                 "relative_tolerance": 1E-8,
-                "absolute_tolerance": 1E-8#,
-                #"linear_solver": "gmres",
-                #"preconditioner": "ilu"
+                "absolute_tolerance": 1E-8,
+                "linear_solver": "gmres",
+                "preconditioner": "ilu"
             }}
         )
 
