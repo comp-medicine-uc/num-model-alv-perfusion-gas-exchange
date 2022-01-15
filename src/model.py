@@ -753,8 +753,7 @@ class PerfusionGasExchangeModel():
             solver_parameters={"newton_solver": {
                 "relative_tolerance": 1E-8,
                 "absolute_tolerance": 1E-8,
-                "linear_solver": "gmres",
-                "preconditioner": "ilu"
+                "linear_solver": "gmres"
             }}
         )
 
