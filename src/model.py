@@ -341,11 +341,11 @@ class PerfusionGasExchangeModel():
 
         self.p = Function(self.W_h)
         solve(
-            a == F, self.p, self.p_dbc,
-            solver_parameters={
-                'linear_solver': 'gmres',
-                'preconditioner': 'ilu'
-            }
+            a == F, self.p, self.p_dbc#,
+            #solver_parameters={
+            #    'linear_solver': 'gmres',
+            #    'preconditioner': 'ilu'
+            #}
         )
 
         self.u = project(
