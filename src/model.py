@@ -193,19 +193,19 @@ class PerfusionGasExchangeModel():
                 #    self.dir_min, self.dir_max, 1
                 #)
                 self.gamma_in = GammaTKDIn(
-                    self.dir_min, self.dir_max, 1E0
+                    self.dir_min, self.dir_max, 0.5E1
                 )
                 self.gamma_out = GammaTKDOut(
-                    self.dir_min, self.dir_max, 1E0
+                    self.dir_min, self.dir_max, 0.5E1
                 )
                 self.gamma_pi = GammaTKDPi(
-                    self.dir_min, self.dir_max, 1E0
+                    self.dir_min, self.dir_max, 0.1E1
                 )
                 self.gamma_air = GammaAirTKD(
-                    self.dir_min, self.dir_max, 3.9599E-8
+                    self.dir_min, self.dir_max, 0.1E1
                 )
                 gamma_outish = GammaTKDOut(
-                    self.dir_min, self.dir_max, 1E1
+                    self.dir_min, self.dir_max, 0.5E1
                 )
                 refine_out = MeshFunction('bool', self.mesh, dim=3)
                 refine_out.set_all(False)
@@ -752,8 +752,8 @@ class PerfusionGasExchangeModel():
             G == 0, x, self.sbst_dbc,
             solver_parameters={"newton_solver": {
                 "relative_tolerance": 1E-8,
-                "absolute_tolerance": 1E-8,
-                "linear_solver": "gmres"
+                "absolute_tolerance": 1E-8#,
+                #"linear_solver": "gmres"
             }}
         )
 
