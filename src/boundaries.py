@@ -248,7 +248,9 @@ class GammaTKDOut(SubDomain):
         '''
         return on_boundary and x[0] > 45 and near(
             abs(x[1]) + abs(x[2]), 100/3/sqrt(2), self.tol
-        )
+        ) and not (x[0] > 48 and (
+            np.max([abs(x[1]), abs(x[2])]) > 100/3/sqrt(2)*0.8 + self.tol
+        ))
 
 class GammaInSphere(SubDomain):
     '''Subdomain class for boundary conditions.'''
