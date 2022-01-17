@@ -163,8 +163,8 @@ class PerfusionGasExchangeModel():
                 #self.gamma_air = GammaAirSphereV2(211.99)
 
                 ## small sphere
-                self.gamma_in = GammaInSphereV2(59)
-                self.gamma_out = GammaOutSphereV2(59)
+                self.gamma_in = GammaInSphereV2(60)
+                self.gamma_out = GammaOutSphereV2(60)
                 self.gamma_air = GammaAirSphereV2(58)
 
                 # Declare the boundaries in the mesh and tag them
@@ -752,11 +752,16 @@ class PerfusionGasExchangeModel():
             G == 0, x, self.sbst_dbc,
             solver_parameters={"newton_solver": {
                 "relative_tolerance": 1E-8,
-                "absolute_tolerance": 1E-8,
-                "linear_solver": "gmres",
-                "preconditioner": "ilu"
+                "absolute_tolerance": 1E-8#,
+                #"linear_solver": "gmres"#,
+                #"preconditioner": "sor"
             }}
         )
+
+        # Slab converges with GMRES+ILU on local and remote
+        # Sphere diverges with GMRES+ILU on local
+        # Sphere converges with default solver on local
+        # TKD diverges without GMRES+ILU on local
 
         if save:
 
