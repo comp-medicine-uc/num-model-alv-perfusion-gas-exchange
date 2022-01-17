@@ -192,25 +192,39 @@ class PerfusionGasExchangeModel():
                 #self.gamma_out = GammaOut(
                 #    self.dir_min, self.dir_max, 1
                 #)
-                self.gamma_in = GammaTKDIn(
-                    self.dir_min, self.dir_max, 0.5E1
+                #self.gamma_in = GammaTKDIn(
+                #    self.dir_min, self.dir_max, 0.5E1
+                #)
+                #self.gamma_out = GammaTKDOut(
+                #    self.dir_min, self.dir_max, 0.6E1
+                #)
+                #self.gamma_pi = GammaTKDPi(
+                #    self.dir_min-4.5, self.dir_max+4.5, 0.2E1
+                #)
+                #self.gamma_air = GammaAirTKD(
+                #    self.dir_min, self.dir_max, 0.5E1
+                #)
+                #gamma_outish = GammaTKDOut(
+                #    self.dir_min, self.dir_max, 0.5E1
+                #)
+                #refine_out = MeshFunction('bool', self.mesh, dim=3)
+                #refine_out.set_all(False)
+                #gamma_outish.mark(refine_out, True)
+                #self.mesh = refine(self.mesh, refine_out)
+
+                # NEWER MESH
+                self.gamma_in = GammaTKDInV2(
+                    self.dir_min, self.dir_max, 1E1
                 )
-                self.gamma_out = GammaTKDOut(
-                    self.dir_min, self.dir_max, 0.6E1
+                self.gamma_out = GammaTKDOutV2(
+                    self.dir_min, self.dir_max, 1E1
                 )
-                self.gamma_pi = GammaTKDPi(
-                    self.dir_min, self.dir_max, 0.5E1
+                self.gamma_pi = GammaTKDPiV2(
+                    self.dir_min, self.dir_max, DOLFIN_EPS
                 )
-                self.gamma_air = GammaAirTKD(
-                    self.dir_min, self.dir_max, 0.5E1
+                self.gamma_air = GammaAirTKDV2(
+                    self.dir_min, self.dir_max, DOLFIN_EPS
                 )
-                gamma_outish = GammaTKDOut(
-                    self.dir_min, self.dir_max, 0.5E1
-                )
-                refine_out = MeshFunction('bool', self.mesh, dim=3)
-                refine_out.set_all(False)
-                gamma_outish.mark(refine_out, True)
-                self.mesh = refine(self.mesh, refine_out)
             else:
                 raise ValueError(
                     "Mesh type must be slab or tkd for periodicity."
@@ -289,8 +303,10 @@ class PerfusionGasExchangeModel():
         v = TestFunction(self.W_h)
         a = inner(grad(p), grad(v))*dx
         F = Constant(0)*v*dx
-        #if self.meshtype == 'sphere':
-        F += 200*self.params["mu"]/self.params["kappa"]*v*ds(1)
+        if meshtype == 'tkd':
+            F += 200*self.params["mu"]/self.params["kappa"]*v*ds(1)
+        else:
+            F += 200*self.params["mu"]/self.params["kappa"]*v*ds(1)
         '''
         elif self.meshtype == 'tkd':
             c = 100/3
@@ -753,15 +769,17 @@ class PerfusionGasExchangeModel():
             solver_parameters={"newton_solver": {
                 "relative_tolerance": 1E-8,
                 "absolute_tolerance": 1E-8#,
-                #"linear_solver": "gmres"#,
-                #"preconditioner": "sor"
+                #"linear_solver": "gmres",
+                #"preconditioner": "ilu"
             }}
         )
 
         # Slab converges with GMRES+ILU on local and remote
         # Sphere diverges with GMRES+ILU on local
         # Sphere converges with default solver on local
-        # TKD diverges without GMRES+ILU on local
+        # TKD smoothed diverges without GMRES+ILU on local
+        # Attempt to solve TKD with NEW GEOMETRY
+        # TKD CONVERGES!!!!! with new geometry
 
         if save:
 

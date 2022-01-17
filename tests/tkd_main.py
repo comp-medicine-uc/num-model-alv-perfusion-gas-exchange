@@ -14,12 +14,12 @@ from src.params import params
 
 
 print("Starting...")
-folder = "tkd_job"
+folder = "tkd-job"
 path = os.path.join("../raw-data", folder)
 model = PerfusionGasExchangeModel(folder_path=path, params=params)
 print("Model initialised")
 model.import_mesh(
-    os.path.join("../raw-data", "TKD_new_smooth.xml"), meshtype='tkd', type="xml", 
+    os.path.join("../raw-data", "TKD_newer.xml"), meshtype='tkd', type="xml", 
     periodic=True
 )
 print("Mesh imported")

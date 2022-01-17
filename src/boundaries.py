@@ -193,15 +193,19 @@ class GammaAirTKD(SubDomain):
         return on_boundary and not (
             (x[0] < -45 and near(
             abs(x[1]) + abs(x[2]), 100/3/sqrt(2), self.tol
-        )) or (x[0] > 45 and near(
+        ) and not (x[0] < -45 and (
+            np.max([abs(x[1]), abs(x[2])]) > 100/3/sqrt(2)*0.8 + self.tol
+        ))) or (x[0] > 45 and near(
             abs(x[1]) + abs(x[2]), 100/3/sqrt(2), self.tol
-        ))
+        ) and not (x[0] > 45 and (
+            np.max([abs(x[1]), abs(x[2])]) > 100/3/sqrt(2)*0.8 + self.tol
+        )))
         ) and not (
-            near(x[1], self.dir_min, self.tol) \
-                or near(x[1], self.dir_max, self.tol)
+            near(x[1], self.dir_min-4.5, self.tol) \
+                or near(x[1], self.dir_max+4.5, self.tol)
         ) and not (
-            near(x[2], self.dir_min, self.tol) \
-                or near(x[2], self.dir_max, self.tol)
+            near(x[2], self.dir_min-4.5, self.tol) \
+                or near(x[2], self.dir_max+4.5, self.tol)
         )
 
 class GammaTKDIn(SubDomain):
@@ -225,7 +229,9 @@ class GammaTKDIn(SubDomain):
         '''
         return on_boundary and x[0] < -45 and near(
             abs(x[1]) + abs(x[2]), 100/3/sqrt(2), self.tol
-        )
+        ) and not (x[0] < -45 and (
+            np.max([abs(x[1]), abs(x[2])]) > 100/3/sqrt(2)*0.8 + self.tol
+        ))
 
 class GammaTKDOut(SubDomain):
     '''Subdomain class for boundary conditions on TKD to avoid singularities.'''
@@ -246,10 +252,10 @@ class GammaTKDOut(SubDomain):
         x: position.
         on_boundary: True if on element boundary. (bool)
         '''
-        return on_boundary and x[0] > 45 and near(
+        return on_boundary and x[0] > 49.5 and near(
             abs(x[1]) + abs(x[2]), 100/3/sqrt(2), self.tol
-        ) and not (x[0] > 48 and (
-            np.max([abs(x[1]), abs(x[2])]) > 100/3/sqrt(2)*0.8 + self.tol
+        ) and not (x[0] > 45 and (
+            np.max([abs(x[1]), abs(x[2])]) > 100/3/sqrt(2)*1 + self.tol
         ))
 
 class GammaInSphere(SubDomain):
@@ -351,7 +357,7 @@ class GammaInSphereV2(SubDomain):
         '''
         return on_boundary and near(
             -(106/20)*np.sqrt(x[1]**2 + x[2]**2), x[0], self.tol
-        ) and x[0] < 0 and not x[0] < -52.2
+        ) and x[0] < 0 and not x[0] < -53 #x[0] < -52.2
 
 class GammaOutSphereV2(SubDomain):
     '''Subdomain class for boundary conditions.'''
@@ -372,7 +378,7 @@ class GammaOutSphereV2(SubDomain):
         '''
         return on_boundary and near(
             (106/20)*np.sqrt(x[1]**2 + x[2]**2), x[0], self.tol
-        ) and x[0] > 0 and not x[0] > 52.2
+        ) and x[0] > 0 and not x[0] > 53 #x[0] > 52.2
 
 class GammaAirSphereV2(SubDomain):
     '''Subdomain class for boundary conditions.'''
@@ -397,3 +403,124 @@ class GammaAirSphereV2(SubDomain):
         ) and x[0] < 0) and not (near(
             (106/20)*np.sqrt(x[1]**2 + x[2]**2), x[0], self.tol
         ) and x[0] > 0)
+
+class GammaTKDPiV2(SubDomain):
+    '''Subdomain class for periodic boundary conditions in TKD mesh.'''
+    def __init__(self, dir_min, dir_max, tol):
+        '''Instance the subdomain.
+        
+        dir_min: minimum value of periodic direction (z or y). (float)
+        dir_max: maximum value of periodic direction (z or y). (float)
+        tol: tolerance for numerical roundoff in element tagging. (float)
+        '''
+        super().__init__()
+        self.dir_min = dir_min
+        self.dir_max = dir_max
+        self.tol = tol
+
+    def inside(self, x, on_boundary):
+        '''Checks if position is on subdomain.
+        
+        x: position.
+        on_boundary: True if on element boundary. (bool)
+        '''
+        return on_boundary and (
+            near(x[1], self.dir_max, self.tol) \
+                or near(x[2], self.dir_max, self.tol)
+        )
+
+    def map(self, x, y):
+        '''Maps opposite faces for periodic boundary conditions.
+        
+        x: position in subdomain.
+        y: position in opposite subdomain.
+        '''
+        y[0] = x[0]
+        if near(x[1], self.dir_max, self.tol):
+            y[1] = x[1] - (self.dir_max - self.dir_min)
+            y[2] = x[2]
+        else:
+            y[1] = x[1]
+            y[2] = x[2] - (self.dir_max - self.dir_min)
+
+class GammaAirTKDV2(SubDomain):
+    '''Subdomain class for periodic boundary conditions in slab mesh.'''
+    def __init__(self, dir_min, dir_max, tol):
+        '''Instance the subdomain.
+        
+        dir_min: minimum value of periodic direction (z or y). (float)
+        dir_max: maximum value of periodic direction (z or y). (float)
+        tol: tolerance for numerical roundoff in element tagging. (float)
+        '''
+        super().__init__()
+        self.dir_min = dir_min
+        self.dir_max = dir_max
+        self.tol = tol
+
+    def inside(self, x, on_boundary):
+        '''Checks if position is on subdomain.
+        
+        x: position.
+        on_boundary: True if on element boundary. (bool)
+        '''
+        return on_boundary and not (
+            x[0] < 0 and near(
+                x[1]**2 + x[2]**2, (100/5/sqrt(2))**2, 1E1
+            )
+        ) and not (
+            x[0] > 0 and near(
+                x[1]**2 + x[2]**2, (100/5/sqrt(2))**2, 1E1
+            )
+        ) and not (
+            near(x[1], self.dir_min, self.tol) \
+                or near(x[1], self.dir_max, self.tol)
+        ) and not (
+            near(x[2], self.dir_min, self.tol) \
+                or near(x[2], self.dir_max, self.tol)
+        )
+
+class GammaTKDInV2(SubDomain):
+    '''Subdomain class for boundary conditions on TKD to avoid singularities.'''
+    def __init__(self, dir_min, dir_max, tol):
+        '''Instance the subdomain.
+        
+        dir_min: minimum value of flow direction. (float)
+        dir_max: maximum value of flow direction. (float)
+        tol: tolerance for numerical roundoff in element tagging. (float)
+        '''
+        super().__init__()
+        self.dir_min = dir_min
+        self.dir_max = dir_max
+        self.tol = tol
+    def inside(self, x, on_boundary):
+        '''Checks if position is on subdomain.
+        
+        x: position.
+        on_boundary: True if on element boundary. (bool)
+        '''
+        return on_boundary and x[0] < 0 and near(
+           x[1]**2 + x[2]**2, (100/5/sqrt(2))**2, self.tol
+        )
+
+class GammaTKDOutV2(SubDomain):
+    '''Subdomain class for boundary conditions on TKD to avoid singularities.'''
+    def __init__(self, dir_min, dir_max, tol):
+        '''Instance the subdomain.
+        
+        dir_min: minimum value of flow direction. (float)
+        dir_max: maximum value of flow direction. (float)
+        tol: tolerance for numerical roundoff in element tagging. (float)
+        '''
+        super().__init__()
+        self.dir_min = dir_min
+        self.dir_max = dir_max
+        self.tol = tol
+    def inside(self, x, on_boundary):
+        '''Checks if position is on subdomain.
+        
+        x: position.
+        on_boundary: True if on element boundary. (bool)
+        '''
+        return on_boundary and x[0] > 0 and near(
+           x[1]**2 + x[2]**2, (100/5/sqrt(2))**2, self.tol
+        )
