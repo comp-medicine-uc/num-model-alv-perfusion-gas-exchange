@@ -351,7 +351,7 @@ class GammaInSphereV2(SubDomain):
         '''
         return on_boundary and near(
             -(106/20)*np.sqrt(x[1]**2 + x[2]**2), x[0], self.tol
-        ) and x[0] < 0
+        ) and x[0] < 0 and not x[0] < -52.2
 
 class GammaOutSphereV2(SubDomain):
     '''Subdomain class for boundary conditions.'''
@@ -372,7 +372,7 @@ class GammaOutSphereV2(SubDomain):
         '''
         return on_boundary and near(
             (106/20)*np.sqrt(x[1]**2 + x[2]**2), x[0], self.tol
-        ) and x[0] > 0
+        ) and x[0] > 0 and not x[0] > 52.2
 
 class GammaAirSphereV2(SubDomain):
     '''Subdomain class for boundary conditions.'''

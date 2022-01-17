@@ -10,7 +10,7 @@ from datetime import date
 import numpy as np
 from fenics import *
 from dolfin import *
-#from mshr import Cylinder, generate_mesh
+from mshr import Cylinder, generate_mesh
 from src.boundaries import *
 
 
@@ -163,8 +163,8 @@ class PerfusionGasExchangeModel():
                 #self.gamma_air = GammaAirSphereV2(211.99)
 
                 ## small sphere
-                self.gamma_in = GammaInSphereV2(60)
-                self.gamma_out = GammaOutSphereV2(60)
+                self.gamma_in = GammaInSphereV2(59)
+                self.gamma_out = GammaOutSphereV2(59)
                 self.gamma_air = GammaAirSphereV2(58)
 
                 # Declare the boundaries in the mesh and tag them
@@ -754,7 +754,7 @@ class PerfusionGasExchangeModel():
                 "relative_tolerance": 1E-8,
                 "absolute_tolerance": 1E-8,
                 "linear_solver": "gmres",
-                "preconditioner": "sor"
+                "preconditioner": "ilu"
             }}
         )
 
@@ -776,43 +776,32 @@ class PerfusionGasExchangeModel():
 
         return x
 
-    def avg_field_along_dir(self, u_0, n):
-        '''Calculates an average field along a certain direction for a slab
-        mesh. Specifically, defines the function v(x) = int_{S(x)} u_0 ds where
-        S(x) = {(x1, y2, y3) | y2, y3 in [0, 6]}.
+    def compute_airflow(self):
+        ds = Measure('ds', domain=mesh, subdomain_data=self.boundaries)
+        n = FacetNormal(mesh)
+        o2 = assemble(
+            dot(grad(self.p_O2), n)*ds(3) + Constant(0)*dx(
+                domain=mesh, subdomain_data=self.boundaries
+            )
+        )
+        co2 = assemble(
+            dot(grad(self.p_CO2), n)*ds(3) + Constant(0)*dx(
+                domain=mesh, subdomain_data=self.boundaries
+            )
+        )
+        return o2, co2
 
-        u_0: field. (FEniCS Function)
-        n: number of slices (more than 1) (discretization of x). (int)
-        '''
-        # https://mscroggs.github.io/qa/3257/
-        # building-2d-function-g-x-y-from-a-3d-function-f-x-y-z-constant/
-
-        x_arr = np.linspace(0.0, self.dir_max - self.dir_min, n)
-        v = np.zeros((n,))
-
-        # Create boundary mesh
-        bmesh = BoundaryMesh(self.mesh, "exterior")
-
-        # Create SubMesh for side at z=0
-        # This will be a UnitSquareMesh with topology dimension 2 in 3 space dimensions
-        cc = MeshFunction('size_t', bmesh, dim=2)
-        xyplane = AutoSubDomain(lambda x: x[0] < 1e-8)
-        xyplane.mark(cc, 6)
-        submesh = SubMesh(bmesh, cc, 6)
-
-        for i in range(n):
-
-            # Move slice/submesh to z=0.5
-            x = submesh.coordinates()
-            x[:, 2] += x_arr[i]
-
-            # Create a FunctionSpace on the submesh
-            Vs = FunctionSpace(submesh, "Lagrange", 1)
-
-            # interpolate_nonmatching_mesh required in parallel, 
-            # interpolate works in series
-            #us = interpolate_nonmatching_mesh(u, Vs)
-            us = interpolate(u_0, Vs)
-            v[i] = assemble(us*dx)
-
-        return [v, x]
+    def compute_blood_conservation(self):
+        ds = Measure('ds', domain=mesh, subdomain_data=self.boundaries)
+        n = FacetNormal(mesh)
+        inlet = assemble(
+            dot(self.u, n)*ds(1) + Constant(0)*dx(
+                domain=mesh, subdomain_data=self.boundaries
+            )
+        )
+        outlet = assemble(
+            dot(self.u, n)*ds(2) + Constant(0)*dx(
+                domain=mesh, subdomain_data=self.boundaries
+            )
+        )
+        return inlet + outlet
