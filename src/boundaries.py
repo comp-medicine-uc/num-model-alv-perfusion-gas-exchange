@@ -356,8 +356,11 @@ class GammaInSphereV2(SubDomain):
         on_boundary: True if on element boundary. (bool)
         '''
         return on_boundary and near(
-            -(106/20)*np.sqrt(x[1]**2 + x[2]**2), x[0], self.tol
-        ) and x[0] < 0 and not x[0] < -53 #x[0] < -52.2
+            -(106/20)*np.sqrt(x[1]**2 + x[2]**2), x[0],
+            self.tol*abs(20/106*x[0])
+        ) and x[0] < 0 and not (
+            np.sqrt(x[1]**2 + x[2]**2) > 20.7
+        )
 
 class GammaOutSphereV2(SubDomain):
     '''Subdomain class for boundary conditions.'''
@@ -377,8 +380,11 @@ class GammaOutSphereV2(SubDomain):
         on_boundary: True if on element boundary. (bool)
         '''
         return on_boundary and near(
-            (106/20)*np.sqrt(x[1]**2 + x[2]**2), x[0], self.tol
-        ) and x[0] > 0 and not x[0] > 53 #x[0] > 52.2
+            (106/20)*np.sqrt(x[1]**2 + x[2]**2), x[0],
+            self.tol*abs(20/106*x[0])
+        ) and x[0] > 0 and not (
+            np.sqrt(x[1]**2 + x[2]**2) > 20.7
+        )
 
 class GammaAirSphereV2(SubDomain):
     '''Subdomain class for boundary conditions.'''
@@ -399,10 +405,13 @@ class GammaAirSphereV2(SubDomain):
         on_boundary: True if on element boundary. (bool)
         '''
         return on_boundary and not (near(
-            -(106/20)*np.sqrt(x[1]**2 + x[2]**2), x[0], self.tol
+            -(106/20)*np.sqrt(x[1]**2 + x[2]**2), x[0],
+            self.tol*abs(20/106*x[0])
         ) and x[0] < 0) and not (near(
-            (106/20)*np.sqrt(x[1]**2 + x[2]**2), x[0], self.tol
-        ) and x[0] > 0)
+            (106/20)*np.sqrt(x[1]**2 + x[2]**2), x[0], self.tol*abs(20/106*x[0])
+        ) and x[0] > 0) or (
+            np.sqrt(x[1]**2 + x[2]**2) > 20.15
+        )
 
 class GammaTKDPiV2(SubDomain):
     '''Subdomain class for periodic boundary conditions in TKD mesh.'''

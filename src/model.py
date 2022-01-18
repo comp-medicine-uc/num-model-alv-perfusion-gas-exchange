@@ -163,9 +163,9 @@ class PerfusionGasExchangeModel():
                 #self.gamma_air = GammaAirSphereV2(211.99)
 
                 ## small sphere
-                self.gamma_in = GammaInSphereV2(60)
-                self.gamma_out = GammaOutSphereV2(60)
-                self.gamma_air = GammaAirSphereV2(58)
+                self.gamma_in = GammaInSphereV2(7E0)
+                self.gamma_out = GammaOutSphereV2(7E0)
+                self.gamma_air = GammaAirSphereV2(6.6E0)
 
                 # Declare the boundaries in the mesh and tag them
 
@@ -800,31 +800,31 @@ class PerfusionGasExchangeModel():
         return x
 
     def compute_airflow(self):
-        ds = Measure('ds', domain=mesh, subdomain_data=self.boundaries)
-        n = FacetNormal(mesh)
+        ds = Measure('ds', domain=self.mesh, subdomain_data=self.boundaries)
+        n = FacetNormal(self.mesh)
         o2 = assemble(
             dot(grad(self.p_O2), n)*ds(3) + Constant(0)*dx(
-                domain=mesh, subdomain_data=self.boundaries
+                domain=self.mesh, subdomain_data=self.boundaries
             )
         )
         co2 = assemble(
             dot(grad(self.p_CO2), n)*ds(3) + Constant(0)*dx(
-                domain=mesh, subdomain_data=self.boundaries
+                domain=self.mesh, subdomain_data=self.boundaries
             )
         )
         return o2, co2
 
     def compute_blood_conservation(self):
-        ds = Measure('ds', domain=mesh, subdomain_data=self.boundaries)
-        n = FacetNormal(mesh)
+        ds = Measure('ds', domain=self.mesh, subdomain_data=self.boundaries)
+        n = FacetNormal(self.mesh)
         inlet = assemble(
             dot(self.u, n)*ds(1) + Constant(0)*dx(
-                domain=mesh, subdomain_data=self.boundaries
+                domain=self.mesh, subdomain_data=self.boundaries
             )
         )
         outlet = assemble(
             dot(self.u, n)*ds(2) + Constant(0)*dx(
-                domain=mesh, subdomain_data=self.boundaries
+                domain=self.mesh, subdomain_data=self.boundaries
             )
         )
         return inlet + outlet
