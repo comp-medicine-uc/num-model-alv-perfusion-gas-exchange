@@ -482,10 +482,10 @@ class GammaAirTKDV2(SubDomain):
             )
         ) and not (
             near(x[1], self.dir_min, self.tol) \
-                or near(x[1], self.dir_max, self.tol)
+                or near(x[1], self.dir_max, self.tol/10)
         ) and not (
             near(x[2], self.dir_min, self.tol) \
-                or near(x[2], self.dir_max, self.tol)
+                or near(x[2], self.dir_max, self.tol/10)
         )
 
 class GammaTKDInV2(SubDomain):

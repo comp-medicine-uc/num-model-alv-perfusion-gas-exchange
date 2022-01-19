@@ -24,7 +24,6 @@ model.import_mesh(
 )
 print("Mesh imported")
 model.mesh = dolfin.refine(model.mesh)
-model.mesh = dolfin.refine(model.mesh)
 print("Mesh refined")
 print("Starting (P) simulation")
 model.sim_p(save=True, meshtype="tkd")
