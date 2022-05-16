@@ -1,4 +1,5 @@
-'''Model file for alveolar perfusion and gas exchange simulations.
+'''Model file for alveolar perfusion and gas exchange simulations used in
+Zurita & Hurtado, 2022.
 '''
 
 __author__ = 'pzuritas'
@@ -10,7 +11,7 @@ from datetime import date
 import numpy as np
 from fenics import *
 from dolfin import *
-#from mshr import Cylinder, generate_mesh
+from mshr import Cylinder, generate_mesh
 from src.boundaries import *
 
 
@@ -36,10 +37,12 @@ class PerfusionGasExchangeModel():
             for param in self.params:
                 file.write(f'Parameter {param}: {self.params[param]}\n')
 
-    def import_mesh(self, mesh_path, meshtype, type="h5", periodic=False):
+    def import_mesh(self, mesh_path, meshtype=None, type="h5", periodic=False):
         '''Imports mesh from .h5 file for use in simulations.
 
         mesh_path: path to file. (string)
+        meshtype: specific case for refinement. (string)
+        type: file format for mesh. (string)
         periodic: use periodic boundary conditions. (bool)
         '''
         if type == "h5":
@@ -54,6 +57,8 @@ class PerfusionGasExchangeModel():
                 infile.read(self.mesh)
         else:
             raise ValueError("type of mesh should be h5 or xml")
+
+        # Refinement in specific cases
 
         if meshtype == 'sphere':
             marker = MeshFunction('bool', self.mesh, dim=3)
@@ -96,7 +101,7 @@ class PerfusionGasExchangeModel():
 
         dims: dimensions of the mesh. (tuple)
         elems: number of elements in each direction. (tuple)
-        save: save the generated mesh on a .pvd file. (bool)
+        save: flag to save the generated mesh on a .pvd file. (bool)
         periodic: use periodic boundary conditions on the z direction. (bool)
         '''
         geometry = BoxMesh(
@@ -147,33 +152,18 @@ class PerfusionGasExchangeModel():
                     self.dir_min, self.dir_max, DOLFIN_EPS
                 )
 
-                # Declare the boundaries in the mesh and tag them
-
-                self.boundaries = MeshFunction('size_t', self.mesh, dim=2)
-                self.boundaries.set_all(0)
-                self.gamma_in.mark(self.boundaries, 1)
-                self.gamma_out.mark(self.boundaries, 2)
-                self.gamma_air.mark(self.boundaries, 3)
-
             elif mesh == "sphere":
-
-                ## large sphere
-                #self.gamma_in = GammaInSphereV2(220)
-                #self.gamma_out = GammaOutSphereV2(220)
-                #self.gamma_air = GammaAirSphereV2(211.99)
-
-                ## small sphere
                 self.gamma_in = GammaInSphereV2(7E0)
                 self.gamma_out = GammaOutSphereV2(7E0)
                 self.gamma_air = GammaAirSphereV2(6.6E0)
 
-                # Declare the boundaries in the mesh and tag them
+            # Declare the boundaries in the mesh and tag them
 
-                self.boundaries = MeshFunction('size_t', self.mesh, dim=2)
-                self.boundaries.set_all(0)
-                self.gamma_in.mark(self.boundaries, 1)
-                self.gamma_out.mark(self.boundaries, 2)
-                self.gamma_air.mark(self.boundaries, 3)
+            self.boundaries = MeshFunction('size_t', self.mesh, dim=2)
+            self.boundaries.set_all(0)
+            self.gamma_in.mark(self.boundaries, 1)
+            self.gamma_out.mark(self.boundaries, 2)
+            self.gamma_air.mark(self.boundaries, 3)
 
         else:
             if mesh == "slab":
@@ -186,33 +176,6 @@ class PerfusionGasExchangeModel():
                 self.gamma_pi = GammaSlabPi(0, self.dims[2], DOLFIN_EPS)
                 self.gamma_air = GammaAirSlabPi(0, self.dims[1], DOLFIN_EPS)
             elif mesh == "tkd":
-                #self.gamma_in = GammaIn(
-                #    self.dir_min, self.dir_max, 1
-                #)
-                #self.gamma_out = GammaOut(
-                #    self.dir_min, self.dir_max, 1
-                #)
-                #self.gamma_in = GammaTKDIn(
-                #    self.dir_min, self.dir_max, 0.5E1
-                #)
-                #self.gamma_out = GammaTKDOut(
-                #    self.dir_min, self.dir_max, 0.6E1
-                #)
-                #self.gamma_pi = GammaTKDPi(
-                #    self.dir_min-4.5, self.dir_max+4.5, 0.2E1
-                #)
-                #self.gamma_air = GammaAirTKD(
-                #    self.dir_min, self.dir_max, 0.5E1
-                #)
-                #gamma_outish = GammaTKDOut(
-                #    self.dir_min, self.dir_max, 0.5E1
-                #)
-                #refine_out = MeshFunction('bool', self.mesh, dim=3)
-                #refine_out.set_all(False)
-                #gamma_outish.mark(refine_out, True)
-                #self.mesh = refine(self.mesh, refine_out)
-
-                # NEWER MESH
                 self.gamma_in = GammaTKDInV2(
                     self.dir_min, self.dir_max, 1E1
                 )
@@ -268,7 +231,7 @@ class PerfusionGasExchangeModel():
         geometry = Cylinder(
             Point(0, 0, 0), Point(*end), r, r, 200
         )
-        self.mesh = generate_mesh(geometry, 50)  # What is 25?
+        self.mesh = generate_mesh(geometry, 50)
         mesh_file = File(self.folder_path+'/mesh.pvd')
         mesh_file << self.mesh
         
@@ -291,7 +254,6 @@ class PerfusionGasExchangeModel():
         # Declare Dirichlet boundary conditions for (P)
 
         self.p_dbc = [
-            #DirichletBC(self.W_h, self.params['p_max'], self.gamma_in)#,
             DirichletBC(self.W_h, self.params['p_min'], self.gamma_out)
         ]
 
@@ -303,55 +265,7 @@ class PerfusionGasExchangeModel():
         v = TestFunction(self.W_h)
         a = inner(grad(p), grad(v))*dx
         F = Constant(0)*v*dx
-        if meshtype == 'tkd':
-            F += 200*self.params["mu"]/self.params["kappa"]*v*ds(1)
-        else:
-            F += 200*self.params["mu"]/self.params["kappa"]*v*ds(1)
-        '''
-        elif self.meshtype == 'tkd':
-            c = 100/3
-            x_hat_1 = project(Expression(
-                'x[1]', degree=2
-            ), self.W_h)
-            file = File(self.folder_path+'/test-bc/x_hat_1.pvd')
-            file << x_hat_1
-            x_hat_2 = project(Expression(
-                'x[2]', degree=2
-            ), self.W_h)
-            file = File(self.folder_path+'/test-bc/x_hat_2.pvd')
-            file << x_hat_2
-            x_hat_1_norm = project(abs(x_hat_1) + abs(x_hat_2), self.W_h)
-            file = File(self.folder_path+'/test-bc/x_hat_1_norm.pvd')
-            file << x_hat_1_norm
-            n_expr = project(
-                Expression(
-                    ('1', '0', '0'), degree=2
-                ), self.V_h
-            )
-            x_hat = project(Expression(
-                ('0', 'x[1]', 'x[2]'), degree=2
-            ), self.V_h)
-            x_hat_normed = project(x_hat/inner(x_hat, x_hat)**0.5, self.V_h)
-            file = File(self.folder_path+'/test-bc/x_hat_normed.pvd')
-            file << x_hat_normed
-            n_min_x_hat = project(n_expr - x_hat_normed, self.V_h)
-            file = File(self.folder_path+'/test-bc/x_hat.pvd')
-            file << x_hat
-            file = File(self.folder_path+'/test-bc/n_min_x_hat.pvd')
-            file << n_min_x_hat
-            norm_n_x_hat = project(
-                inner(n_min_x_hat, n_min_x_hat)**(1/2),
-                self.W_h
-            )
-            weight = project(
-                1/(
-                    x_hat_1_norm/c/norm_n_x_hat + 1 - x_hat_1_norm/c
-                )*(
-                    x_hat_1_norm/c/norm_n_x_hat
-                ), self.W_h
-            )
-            F += weight*200*self.params["mu"]/self.params["kappa"]*v*ds(1)
-        '''
+        F += self.params["u_in"]*self.params["mu"]/self.params["kappa"]*v*ds(1)
 
         # Solve problem
 
@@ -381,13 +295,14 @@ class PerfusionGasExchangeModel():
             p_file = File(self.folder_path+'/p/p.pvd')
             p_file << self.p
 
-    def set_u(self, value=(0, 0, 0), mesh='slab', save=True):
+    def set_u(self, value=(0, 0, 0), meshtype='slab', save=True):
         '''Prescribes a velocity field u to the mesh instead of solving (P).
 
         value: uniform velocity field. (tuple)
+        meshtype: specific case of mesh. (string or None)
         save: saves to vtk. (bool)
         '''
-        self.instance_boundaries(mesh=mesh)
+        self.instance_boundaries(mesh=meshtype)
         self.instance_function_spaces()
 
         self.u = project(Expression(tuple(map(str, value)), degree=1), self.V_h)
@@ -399,7 +314,7 @@ class PerfusionGasExchangeModel():
             u_file << self.u
 
     def f(self, X, p_X, c_HbX, c_HbY):
-        '''Generation rate as defined in the model.
+        '''Generation rate of X as defined in the model.
         
         X: gas species. (string)
         p_X: partial pressure of X. (FEniCS Function)
@@ -429,7 +344,7 @@ class PerfusionGasExchangeModel():
             raise ValueError('Gas species in f must be O2 or CO2.')
 
     def g(self, X, p_X, c_HbX, c_HbY):
-        '''Scaled generation rate as defined in the model.
+        '''Scaled generation rate of X as defined in the model.
         
         X: gas species. (string)
         p_X: partial pressure of X. (FEniCS Function)
@@ -445,181 +360,15 @@ class PerfusionGasExchangeModel():
         else:
             raise ValueError('Gas species in f must be O2 or CO2.')
 
-    def sim_bst(self, final_time, num_steps, hb=True, save=True):
-        '''Solves the blood-side transport (BST) problem of the model.
-        
-        final_time: time to simulate in seconds. (float)
-        num_steps: number of time steps. (int)
-        hb: toggle effects of hemoglobin. (bool)
-        save: saves to vtk. (bool)
-        '''
-        # Instance parameters
-
-        self.T = final_time
-        self.N = num_steps
-        dt = self.T/self.N
-
-        p_air_O2 = self.params['p_air_O2']
-        d_ba_O2 = self.params['d_ba_O2']
-        d_pla_O2 = self.params['d_pla_O2']
-
-        p_air_CO2 = self.params['p_air_CO2']
-        d_ba_CO2 = self.params['d_ba_CO2']
-        d_pla_CO2 = self.params['d_pla_CO2']
-
-        h_ba = self.params['h_ba']
-
-        # Instance function space for the multi-field problem
-
-        element = VectorElement('P', tetrahedron, 1, dim=4)
-        self.M_h = FunctionSpace(self.mesh, element)
-        ds = Measure('ds', domain=self.mesh, subdomain_data=self.boundaries)
-
-        # Declare functions and test functions
-
-        x = Function(self.M_h)
-        x_nm1 = Function(self.M_h)
-        self.p_O2, self.p_CO2, self.c_HbO2, self.c_HbCO2 = split(x)
-
-        v, w, eta, xi = TestFunctions(self.M_h)
-
-        n = FacetNormal(self.mesh)
-
-        # Set initial conditions
-
-        x_nm1 = project(
-            Expression(
-                ('p_O2_0', 'p_CO2_0', 'c_HbO2_0', 'c_HbCO2_0'),
-                degree=1,
-                p_O2_0=self.params['p_O2_in'],
-                p_CO2_0=self.params['p_CO2_in'],
-                c_HbO2_0=0,
-                c_HbCO2_0=0
-            ), self.M_h
-        )
-        p_O2_nm1, p_CO2_nm1, c_HbO2_nm1, c_HbCO2_nm1 = split(x_nm1)
-
-        # Define residuals
-
-        G_p_O2 = self.p_O2*v*dx
-        G_p_O2 += dt*d_pla_O2*inner(grad(self.p_O2), grad(v))*dx
-        G_p_O2 += dt*d_ba_O2/h_ba*self.p_O2*v*ds(3)
-        G_p_O2 += dt*inner(self.u*self.p_O2, grad(v))*dx
-        G_p_O2 += -dt*inner(self.u*self.p_O2, n)*v*ds(2)
-        if hb:
-            G_p_O2 += dt*self.f('O2', self.p_O2, self.c_HbO2, self.c_HbCO2)*v*dx
-        G_p_O2 += -dt*d_ba_O2/h_ba*p_air_O2*v*ds(3)
-        G_p_O2 += -p_O2_nm1*v*dx
-
-        G_p_CO2 = self.p_CO2*w*dx
-        G_p_CO2 += dt*d_pla_CO2*inner(grad(self.p_CO2), grad(w))*dx
-        G_p_CO2 += dt*d_ba_CO2/h_ba*self.p_CO2*w*ds(3)
-        G_p_CO2 += dt*inner(self.u*self.p_CO2, grad(w))*dx
-        G_p_CO2 += -dt*inner(self.u*self.p_CO2, n)*w*ds(2)
-        if hb:
-            G_p_CO2 += dt*self.f(
-                'CO2', self.p_CO2, self.c_HbCO2, self.c_HbO2
-            )*w*dx
-        G_p_CO2 += -dt*d_ba_CO2/h_ba*p_air_CO2*w*ds(3)
-        G_p_CO2 += -p_CO2_nm1*w*dx
-
-        G_c_O2 = self.c_HbO2*eta*dx
-        G_c_O2 += -c_HbO2_nm1*eta*dx
-        if hb:
-            G_c_O2 += dt*inner(self.u*self.c_HbO2, grad(eta))*dx
-            G_c_O2 += -dt*inner(self.u*self.c_HbO2, n)*eta*ds(2)
-            G_c_O2 += -dt*self.g(
-                'O2', self.p_O2, self.c_HbO2, self.c_HbCO2
-            )*eta*dx
-
-        G_c_CO2 = self.c_HbCO2*xi*dx
-        G_c_CO2 += -c_HbCO2_nm1*xi*dx
-        if hb:
-            G_c_CO2 += dt*inner(self.u*self.c_HbCO2, grad(xi))*dx
-            G_c_CO2 += -dt*inner(self.u*self.c_HbCO2, n)*xi*ds(2)
-            G_c_CO2 += -dt*self.g('CO2', self.p_CO2, self.c_HbCO2, self.c_HbO2)*xi*dx
-
-        G = G_p_O2 + G_p_CO2 + G_c_O2 + G_c_CO2
-
-        if save:
-
-            # Create files for output
-
-            p_O2_file = File(self.folder_path+'/bst/pO2.pvd')
-            p_CO2_file = File(self.folder_path+'/bst/pCO2.pvd')
-            c_HbO2_file = File(self.folder_path+'/bst/cHbO2.pvd')
-            c_HbCO2_file = File(self.folder_path+'/bst/cHbCO2.pvd')
-
-        # Time-stepping
-
-        t = 0
-        for n in range(self.N):
-            if n == 0:
-                if save:
-
-                    # Save initial conditions
-                    
-                    _p_O2, _p_CO2, _c_HbO2, _c_HbCO2 = x.split()
-                    _p_O2.assign(project(p_O2_nm1, self.W_h))
-                    _p_CO2.assign(project(p_CO2_nm1, self.W_h))
-                    _c_HbO2.assign(project(c_HbO2_nm1, self.W_h))
-                    _c_HbCO2.assign(project(c_HbCO2_nm1, self.W_h))
-                    p_O2_file << (_p_O2, t)
-                    p_CO2_file << (_p_CO2, t)
-                    c_HbO2_file << (_c_HbO2, t)
-                    c_HbCO2_file << (_c_HbCO2, t)
-
-            # Update current time
-
-            t += dt
-
-            # Declare Dirichlet boundary conditions for (BST)
-
-            self.bst_dbc = [
-                DirichletBC(
-                    self.M_h.sub(0), self.params['p_O2_in'], self.gamma_in
-                ),
-                DirichletBC(
-                    self.M_h.sub(1), self.params['p_CO2_in'], self.gamma_in
-                ),
-                DirichletBC(
-                    self.M_h.sub(2), Constant(0), self.gamma_in
-                ),
-                DirichletBC(
-                    self.M_h.sub(3), Constant(0), self.gamma_in
-                )
-            ]
-
-            # Solve variational problem for time step
-
-            solve(G == 0, x, self.bst_dbc)
-
-            if save:
-
-                # Save solution to files
-
-                _p_O2, _p_CO2, _c_HbO2, _c_HbCO2 = x.split()
-                p_O2_file << (_p_O2, t)
-                p_CO2_file << (_p_CO2, t)
-                c_HbO2_file << (_c_HbO2, t)
-                c_HbCO2_file << (_c_HbCO2, t)
-
-            # Update previous solution
-
-            x_nm1.assign(x)
-
-            # Update progress
-
-            print(
-                f'Finished time step {n+1}/{self.N} ({round(t/self.T*100)}%)\n'
-            )
-
     def sim_sbst(self, hb=True, save=True, guess=None):
-        '''Solves the steady state blood-side transport (SBST) problem of the
+        '''Solves the steady state blood-side transport (T) problem of the
         model.
         
-        hb: toggle effects of hemoglobin. (bool)
+        hb: toggle effects of hemoglobin, that is, chooses between solving
+        (WT) or (WLT). (bool)
         save: saves to vtk. (bool)
+        guess: starting point for Newton iterations. s^0_L in the paper.
+        (FEniCS Function or None)
         '''
         # Instance parameters
 
@@ -639,7 +388,7 @@ class PerfusionGasExchangeModel():
         self.M_h = FunctionSpace(self.mesh, element)
         ds = Measure('ds', domain=self.mesh, subdomain_data=self.boundaries)
 
-        # Declare functions and test functions
+        # Declare functions and test functions, and initial point for iterations
 
         if not guess:
             x = Function(self.M_h)
@@ -682,54 +431,6 @@ class PerfusionGasExchangeModel():
         else:
             G_c_O2 = self.c_HbO2*eta*dx
             G_c_CO2 = self.c_HbCO2*xi*dx
-
-        '''
-        if self.meshtype == 'tkd':
-            # Define outlet boundary condition for gases
-            c = 100/3
-            x_hat_1 = project(Expression(
-                'x[1]', degree=2
-            ), self.W_h)
-            file = File(self.folder_path+'/test-bc/x_hat_1.pvd')
-            file << x_hat_1
-            x_hat_2 = project(Expression(
-                'x[2]', degree=2
-            ), self.W_h)
-            file = File(self.folder_path+'/test-bc/x_hat_2.pvd')
-            file << x_hat_2
-            x_hat_1_norm = project(abs(x_hat_1) + abs(x_hat_2), self.W_h)
-            file = File(self.folder_path+'/test-bc/x_hat_1_norm.pvd')
-            file << x_hat_1_norm
-            n_expr = project(
-                Expression(
-                    ('1', '0', '0'), degree=2
-                ), self.V_h
-            )
-            x_hat = project(Expression(
-                ('0', 'x[1]', 'x[2]'), degree=2
-            ), self.V_h)
-            x_hat_normed = project(x_hat/inner(x_hat, x_hat)**0.5, self.V_h)
-            file = File(self.folder_path+'/test-bc/x_hat_normed.pvd')
-            file << x_hat_normed
-            n_min_x_hat = project(n_expr - x_hat_normed, self.V_h)
-            file = File(self.folder_path+'/test-bc/x_hat.pvd')
-            file << x_hat
-            file = File(self.folder_path+'/test-bc/n_min_x_hat.pvd')
-            file << n_min_x_hat
-            norm_n_x_hat = project(
-                inner(n_min_x_hat, n_min_x_hat)**(1/2),
-                self.W_h
-            )
-            weight = project(
-                1/(
-                    x_hat_1_norm/c/norm_n_x_hat + 1 - x_hat_1_norm/c
-                )*(
-                    x_hat_1_norm/c/norm_n_x_hat
-                ), self.W_h
-            )
-            G_p_O2 += weight*d_pla_O2*inner(grad(self.p_O2), x_hat)*v*ds(2)
-            G_p_CO2 += weight*d_pla_CO2*inner(grad(self.p_CO2), x_hat)*w*ds(2)
-        '''
 
         G = G_p_O2 + G_p_CO2 + G_c_O2 + G_c_CO2
 
@@ -774,13 +475,6 @@ class PerfusionGasExchangeModel():
             }}
         )
 
-        # Slab converges with GMRES+ILU on local and remote
-        # Sphere diverges with GMRES+ILU on local
-        # Sphere converges with default solver on local
-        # TKD smoothed diverges without GMRES+ILU on local
-        # Attempt to solve TKD with NEW GEOMETRY
-        # TKD CONVERGES!!!!! with new geometry
-
         if save:
 
             # Save solution to files
@@ -800,6 +494,8 @@ class PerfusionGasExchangeModel():
         return x
 
     def compute_airflow(self):
+        '''Experimental. Tries to compute airflow across the blood-air barrier.
+        '''
         ds = Measure('ds', domain=self.mesh, subdomain_data=self.boundaries)
         n = FacetNormal(self.mesh)
         o2 = assemble(
@@ -815,6 +511,8 @@ class PerfusionGasExchangeModel():
         return o2, co2
 
     def compute_blood_conservation(self):
+        '''Experimental. Tries to compute inflow vs outflow of blood.
+        '''
         ds = Measure('ds', domain=self.mesh, subdomain_data=self.boundaries)
         n = FacetNormal(self.mesh)
         inlet = assemble(

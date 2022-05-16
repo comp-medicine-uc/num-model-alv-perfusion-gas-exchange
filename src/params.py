@@ -4,26 +4,18 @@
 __author__ = 'pzuritas'
 __email__ = 'pzurita@uc.cl'
 
-from dolfin import Constant
-
 
 mu = 3.5*0.00750062E-3  # mmHg*s
 kappa = mu*5000 #mu*30000  # um^2s
 p_max = 12  # mmHg
 p_min = 8  # mmHg
+u_in = 200  # um/s
 
 d_pla_O2 = 1.62E-5*1E8  # um^2/s
 d_ba_O2 = 1E-5*1E8  # um^2/s
 beta_O2 = 0.9*1.41E-6/(1E15) # mol/um^3/mmHg
 
-
-# Manually set value!
-# Normal value
-#k_O2 = 20 # 40  # 1/s
-# Set value
-k_O2 = 29
-
-
+k_O2 = 29  # 1/s
 k_prime_O2 = 2.85E21 # 66E-6*1E15  # um^3/mol/s
 
 d_pla_CO2 = 1E-5*1E8  # um^2/s
@@ -65,4 +57,5 @@ params = {
     "c_t": c_t,
     "c_HbO2_in": c_HbO2_in,
     "c_HbCO2_in": c_HbCO2_in,
+    "u_in": u_in
 }
