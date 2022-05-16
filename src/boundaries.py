@@ -9,7 +9,9 @@ import numpy as np
 
 
 class GammaIn(SubDomain):
-    '''Subdomain class for boundary conditions.'''
+    '''Subdomain class for boundary conditions on the inlet of a rectangular
+    prism.
+    '''
     def __init__(self, dir_min, dir_max, tol):
         '''Instance the subdomain.
         
@@ -30,7 +32,9 @@ class GammaIn(SubDomain):
         return on_boundary and near(x[0], self.dir_min, self.tol)
 
 class GammaOut(SubDomain):
-    '''Subdomain class for boundary conditions.'''
+    '''Subdomain class for boundary conditions on the outlet of a rectangular
+    prism.
+    '''
     def __init__(self, dir_min, dir_max, tol):
         '''Instance the subdomain.
         
@@ -51,7 +55,9 @@ class GammaOut(SubDomain):
         return on_boundary and near(x[0], self.dir_max, self.tol)
 
 class GammaAir(SubDomain):
-    '''Subdomain class for boundary conditions.'''
+    '''Subdomain class for boundary conditions on the blood-air barrier of a
+    rectangular prism.
+    '''
     def __init__(self, dir_min, dir_max, tol):
         '''Instance the subdomain.
         
@@ -76,7 +82,8 @@ class GammaAir(SubDomain):
         )
 
 class GammaSlabPi(SubDomain):
-    '''Subdomain class for periodic boundary conditions in slab mesh.'''
+    '''Subdomain class for periodic boundary conditions in sheet mesh.
+    '''
     def __init__(self, dir_min, dir_max, tol):
         '''Instance the subdomain.
         
@@ -108,8 +115,8 @@ class GammaSlabPi(SubDomain):
         y[2] = x[2] + 6.0  # (self.dir_max - self.dir_min)
 
 class GammaAirSlabPi(GammaAir):
-    '''Alternative subdomain class for \Gamma_{\text{air}} when using
-    periodic boundary conditions on slab mesh.
+    '''Alternative subdomain class for blood-air barrier when using
+    periodic boundary conditions on sheet mesh.
     '''
     def __init__(self, dir_min, dir_max, tol):
         '''Instance the subdomain.
@@ -131,215 +138,8 @@ class GammaAirSlabPi(GammaAir):
                 or near(x[1], self.dir_min, self.tol)
         )
 
-class GammaTKDPi(SubDomain):
-    '''Subdomain class for periodic boundary conditions in TKD mesh.'''
-    def __init__(self, dir_min, dir_max, tol):
-        '''Instance the subdomain.
-        
-        dir_min: minimum value of periodic direction (z or y). (float)
-        dir_max: maximum value of periodic direction (z or y). (float)
-        tol: tolerance for numerical roundoff in element tagging. (float)
-        '''
-        super().__init__()
-        self.dir_min = dir_min
-        self.dir_max = dir_max
-        self.tol = tol
-
-    def inside(self, x, on_boundary):
-        '''Checks if position is on subdomain.
-        
-        x: position.
-        on_boundary: True if on element boundary. (bool)
-        '''
-        return on_boundary and (
-            near(x[1], self.dir_max, self.tol) \
-                or near(x[2], self.dir_max, self.tol)
-        )
-
-    def map(self, x, y):
-        '''Maps opposite faces for periodic boundary conditions.
-        
-        x: position in subdomain.
-        y: position in opposite subdomain.
-        '''
-        y[0] = x[0]
-        if near(x[1], self.dir_max, self.tol):
-            y[1] = x[1] - (self.dir_max - self.dir_min)
-            y[2] = x[2]
-        else:
-            y[1] = x[1]
-            y[2] = x[2] - (self.dir_max - self.dir_min)
-
-class GammaAirTKD(SubDomain):
-    '''Subdomain class for periodic boundary conditions in slab mesh.'''
-    def __init__(self, dir_min, dir_max, tol):
-        '''Instance the subdomain.
-        
-        dir_min: minimum value of periodic direction (z or y). (float)
-        dir_max: maximum value of periodic direction (z or y). (float)
-        tol: tolerance for numerical roundoff in element tagging. (float)
-        '''
-        super().__init__()
-        self.dir_min = dir_min
-        self.dir_max = dir_max
-        self.tol = tol
-
-    def inside(self, x, on_boundary):
-        '''Checks if position is on subdomain.
-        
-        x: position.
-        on_boundary: True if on element boundary. (bool)
-        '''
-        return on_boundary and not (
-            (x[0] < -45 and near(
-            abs(x[1]) + abs(x[2]), 100/3/sqrt(2), self.tol
-        ) and not (x[0] < -45 and (
-            np.max([abs(x[1]), abs(x[2])]) > 100/3/sqrt(2)*0.8 + self.tol
-        ))) or (x[0] > 45 and near(
-            abs(x[1]) + abs(x[2]), 100/3/sqrt(2), self.tol
-        ) and not (x[0] > 45 and (
-            np.max([abs(x[1]), abs(x[2])]) > 100/3/sqrt(2)*0.8 + self.tol
-        )))
-        ) and not (
-            near(x[1], self.dir_min-4.5, self.tol) \
-                or near(x[1], self.dir_max+4.5, self.tol)
-        ) and not (
-            near(x[2], self.dir_min-4.5, self.tol) \
-                or near(x[2], self.dir_max+4.5, self.tol)
-        )
-
-class GammaTKDIn(SubDomain):
-    '''Subdomain class for boundary conditions on TKD to avoid singularities.'''
-    def __init__(self, dir_min, dir_max, tol):
-        '''Instance the subdomain.
-        
-        dir_min: minimum value of flow direction. (float)
-        dir_max: maximum value of flow direction. (float)
-        tol: tolerance for numerical roundoff in element tagging. (float)
-        '''
-        super().__init__()
-        self.dir_min = dir_min
-        self.dir_max = dir_max
-        self.tol = tol
-    def inside(self, x, on_boundary):
-        '''Checks if position is on subdomain.
-        
-        x: position.
-        on_boundary: True if on element boundary. (bool)
-        '''
-        return on_boundary and x[0] < -45 and near(
-            abs(x[1]) + abs(x[2]), 100/3/sqrt(2), self.tol
-        ) and not (x[0] < -45 and (
-            np.max([abs(x[1]), abs(x[2])]) > 100/3/sqrt(2)*0.8 + self.tol
-        ))
-
-class GammaTKDOut(SubDomain):
-    '''Subdomain class for boundary conditions on TKD to avoid singularities.'''
-    def __init__(self, dir_min, dir_max, tol):
-        '''Instance the subdomain.
-        
-        dir_min: minimum value of flow direction. (float)
-        dir_max: maximum value of flow direction. (float)
-        tol: tolerance for numerical roundoff in element tagging. (float)
-        '''
-        super().__init__()
-        self.dir_min = dir_min
-        self.dir_max = dir_max
-        self.tol = tol
-    def inside(self, x, on_boundary):
-        '''Checks if position is on subdomain.
-        
-        x: position.
-        on_boundary: True if on element boundary. (bool)
-        '''
-        return on_boundary and x[0] > 49.5 and near(
-            abs(x[1]) + abs(x[2]), 100/3/sqrt(2), self.tol
-        ) and not (x[0] > 45 and (
-            np.max([abs(x[1]), abs(x[2])]) > 100/3/sqrt(2)*1 + self.tol
-        ))
-
-class GammaInSphere(SubDomain):
-    '''Subdomain class for boundary conditions.'''
-    def __init__(self, tol):
-        '''Instance the subdomain.
-        
-        dir_min: minimum value of flow direction. (float)
-        dir_max: maximum value of flow direction. (float)
-        tol: tolerance for numerical roundoff in element tagging. (float)
-        '''
-        super().__init__()
-        self.tol = tol
-    def inside(self, x, on_boundary):
-        '''Checks if position is on subdomain.
-        
-        x: position.
-        on_boundary: True if on element boundary. (bool)
-        '''
-        center = -190
-        radius = 106
-        distance_to_outer_sphere = (
-            (x[0] - center)**2 + x[1]**2 + x[2]**2
-        )**0.5
-        return near(distance_to_outer_sphere, radius, self.tol)
-
-class GammaOutSphere(SubDomain):
-    '''Subdomain class for boundary conditions.'''
-    def __init__(self, tol):
-        '''Instance the subdomain.
-        
-        dir_min: minimum value of flow direction. (float)
-        dir_max: maximum value of flow direction. (float)
-        tol: tolerance for numerical roundoff in element tagging. (float)
-        '''
-        super().__init__()
-        self.tol = tol
-    def inside(self, x, on_boundary):
-        '''Checks if position is on subdomain.
-        
-        x: position.
-        on_boundary: True if on element boundary. (bool)
-        '''
-        center = 190
-        radius = 106
-        distance_to_outer_sphere = (
-            (x[0] - center)**2 + x[1]**2 + x[2]**2
-        )**0.5
-        return on_boundary and near(distance_to_outer_sphere, radius, self.tol)
-
-class GammaAirSphere(SubDomain):
-    '''Subdomain class for boundary conditions.'''
-    def __init__(self, tol):
-        '''Instance the subdomain.
-        
-        dir_min: minimum value of flow direction. (float)
-        dir_max: maximum value of flow direction. (float)
-        tol: tolerance for numerical roundoff in element tagging. (float)
-        '''
-        super().__init__()
-        self.tol = tol
-
-    def inside(self, x, on_boundary):
-        '''Checks if position is on subdomain.
-        
-        x: position.
-        on_boundary: True if on element boundary. (bool)
-        '''
-        center_1 = -190
-        radius = 106
-        distance_to_outer_sphere_1 = (
-            (x[0] - center_1)**2 + x[1]**2 + x[2]**2
-        )**0.5
-        center_2 = 190
-        distance_to_outer_sphere_2 = (
-            (x[0] - center_2)**2 + x[1]**2 + x[2]**2
-        )**0.5
-        return on_boundary and not (
-            near(distance_to_outer_sphere_1, radius, self.tol) \
-                or near(distance_to_outer_sphere_2, radius, self.tol)
-        )
-
 class GammaInSphereV2(SubDomain):
-    '''Subdomain class for boundary conditions.'''
+    '''Subdomain class for inlet boundary conditions in hollow sphere model.'''
     def __init__(self, tol):
         '''Instance the subdomain.
         
@@ -363,7 +163,7 @@ class GammaInSphereV2(SubDomain):
         )
 
 class GammaOutSphereV2(SubDomain):
-    '''Subdomain class for boundary conditions.'''
+    '''Subdomain class for outlet boundary conditions in hollow sphere model.'''
     def __init__(self, tol):
         '''Instance the subdomain.
         
@@ -387,7 +187,8 @@ class GammaOutSphereV2(SubDomain):
         )
 
 class GammaAirSphereV2(SubDomain):
-    '''Subdomain class for boundary conditions.'''
+    '''Subdomain class for blood-air barrier boundary conditions in hollow
+    sphere model.'''
     def __init__(self, tol):
         '''Instance the subdomain.
         
@@ -453,7 +254,9 @@ class GammaTKDPiV2(SubDomain):
             y[2] = x[2] - (self.dir_max - self.dir_min)
 
 class GammaAirTKDV2(SubDomain):
-    '''Subdomain class for periodic boundary conditions in slab mesh.'''
+    '''Subdomain class for blood-air barrier when using
+    periodic boundary conditions on TKD mesh.
+    '''
     def __init__(self, dir_min, dir_max, tol):
         '''Instance the subdomain.
         
@@ -489,7 +292,9 @@ class GammaAirTKDV2(SubDomain):
         )
 
 class GammaTKDInV2(SubDomain):
-    '''Subdomain class for boundary conditions on TKD to avoid singularities.'''
+    '''Subdomain class for inlet when using periodic boundary
+    conditions on sheet mesh.
+    '''
     def __init__(self, dir_min, dir_max, tol):
         '''Instance the subdomain.
         
@@ -512,7 +317,9 @@ class GammaTKDInV2(SubDomain):
         )
 
 class GammaTKDOutV2(SubDomain):
-    '''Subdomain class for boundary conditions on TKD to avoid singularities.'''
+    '''Alternative subdomain class for outlet when using periodic boundary
+    conditions on sheet mesh.
+    '''
     def __init__(self, dir_min, dir_max, tol):
         '''Instance the subdomain.
         
