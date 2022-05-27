@@ -1,3 +1,7 @@
 # Raw data
 
-All input and output data go here. Use subfolders when necessary. This is the place for `vtk` files from simulations, etc.
+## Directories
+
+- `sheet-job`: Result files from simulations on sheet mesh.
+- `sphere-job`: Result files from simulations on hollow sphere mesh.
+- `tkd-job`: Result files from simulations on tetrakaidecahedron mesh.
