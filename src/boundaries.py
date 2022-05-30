@@ -81,7 +81,7 @@ class GammaAir(SubDomain):
                 or near(x[0], self.dir_max, self.tol/2)
         )
 
-class GammaSlabPi(SubDomain):
+class GammaSheetPi(SubDomain):
     '''Subdomain class for periodic boundary conditions in sheet mesh.
     '''
     def __init__(self, dir_min, dir_max, tol):
@@ -114,7 +114,7 @@ class GammaSlabPi(SubDomain):
         y[1] = x[1]
         y[2] = x[2] + 6.0  # (self.dir_max - self.dir_min)
 
-class GammaAirSlabPi(GammaAir):
+class GammaAirSheetPi(GammaAir):
     '''Alternative subdomain class for blood-air barrier when using
     periodic boundary conditions on sheet mesh.
     '''
@@ -293,7 +293,7 @@ class GammaAirTKDV2(SubDomain):
 
 class GammaTKDInV2(SubDomain):
     '''Subdomain class for inlet when using periodic boundary
-    conditions on sheet mesh.
+    conditions on TKD mesh.
     '''
     def __init__(self, dir_min, dir_max, tol):
         '''Instance the subdomain.
@@ -318,7 +318,7 @@ class GammaTKDInV2(SubDomain):
 
 class GammaTKDOutV2(SubDomain):
     '''Alternative subdomain class for outlet when using periodic boundary
-    conditions on sheet mesh.
+    conditions on TKD mesh.
     '''
     def __init__(self, dir_min, dir_max, tol):
         '''Instance the subdomain.

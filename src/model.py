@@ -94,10 +94,10 @@ class PerfusionGasExchangeModel():
 
         self.periodic = periodic
 
-    def generate_slab_mesh(
+    def generate_sheet_mesh(
         self, dims, elems, save=True, periodic=False, refined=True
     ):
-        '''Generates a rectangular prism mesh for simulations on a slab.
+        '''Generates a rectangular prism mesh for simulations on a sheet domain.
 
         dims: dimensions of the mesh. (tuple)
         elems: number of elements in each direction. (tuple)
@@ -133,7 +133,7 @@ class PerfusionGasExchangeModel():
     def instance_boundaries(self, mesh=None):
         '''Instances the relevant boundaries for boundary conditions.
         
-        mesh: type of mesh created. None, "slab" or "tkd". (None or str)
+        mesh: type of mesh created. None, "sheet" or "tkd". (None or str)
         '''
 
         self.meshtype = mesh
@@ -166,15 +166,15 @@ class PerfusionGasExchangeModel():
             self.gamma_air.mark(self.boundaries, 3)
 
         else:
-            if mesh == "slab":
+            if mesh == "sheet":
                 self.gamma_in = GammaIn(
                     self.dir_min, self.dir_max, DOLFIN_EPS
                 )
                 self.gamma_out = GammaOut(
                     self.dir_min, self.dir_max, DOLFIN_EPS
                 )
-                self.gamma_pi = GammaSlabPi(0, self.dims[2], DOLFIN_EPS)
-                self.gamma_air = GammaAirSlabPi(0, self.dims[1], DOLFIN_EPS)
+                self.gamma_pi = GammaSheetPi(0, self.dims[2], DOLFIN_EPS)
+                self.gamma_air = GammaAirSheetPi(0, self.dims[1], DOLFIN_EPS)
             elif mesh == "tkd":
                 self.gamma_in = GammaTKDInV2(
                     self.dir_min, self.dir_max, 1E1
@@ -190,7 +190,7 @@ class PerfusionGasExchangeModel():
                 )
             else:
                 raise ValueError(
-                    "Mesh type must be slab or tkd for periodicity."
+                    "Mesh type must be sheet or tkd for periodicity."
                 )
             
             # Declare the boundaries in the mesh and tag them
@@ -246,7 +246,7 @@ class PerfusionGasExchangeModel():
         '''Solves the perfusion (P) problem of the model.
         
         save: saves to vtk. (bool)
-        meshtype: type of mesh. None, "slab" or "tkd". (None or str)
+        meshtype: type of mesh. None, "sheet" or "tkd". (None or str)
         '''
         self.instance_boundaries(mesh=meshtype)
         self.instance_function_spaces()
@@ -295,7 +295,7 @@ class PerfusionGasExchangeModel():
             p_file = File(self.folder_path+'/p/p.pvd')
             p_file << self.p
 
-    def set_u(self, value=(0, 0, 0), meshtype='slab', save=True):
+    def set_u(self, value=(0, 0, 0), meshtype='sheet', save=True):
         '''Prescribes a velocity field u to the mesh instead of solving (P).
 
         value: uniform velocity field. (tuple)
@@ -360,7 +360,7 @@ class PerfusionGasExchangeModel():
         else:
             raise ValueError('Gas species in f must be O2 or CO2.')
 
-    def sim_sbst(self, hb=True, save=True, guess=None):
+    def sim_t(self, hb=True, save=True, guess=None):
         '''Solves the steady state blood-side transport (T) problem of the
         model.
         
