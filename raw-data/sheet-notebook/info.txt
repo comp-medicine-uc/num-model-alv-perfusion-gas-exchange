@@ -1,0 +1,27 @@
+Simulation done on 2022-05-30
+
+Parameters used:
+
+Parameter kappa: 0.13126085
+Parameter mu: 2.625217e-05
+Parameter p_max: 12
+Parameter p_min: 8
+Parameter d_pla_O2: 1620.0
+Parameter d_ba_O2: 1000.0000000000001
+Parameter d_pla_CO2: 1000.0000000000001
+Parameter d_ba_CO2: 914.0000000000001
+Parameter beta_O2: 1.269e-21
+Parameter k_O2: 29
+Parameter k_prime_O2: 2.85e+21
+Parameter beta_CO2: 2.5380000000000002e-20
+Parameter k_CO2: 500000000.0
+Parameter k_prime_CO2: 1e+18
+Parameter h_ba: 0.3
+Parameter p_air_O2: 100
+Parameter p_air_CO2: 40
+Parameter p_O2_in: 40
+Parameter p_CO2_in: 45
+Parameter c_t: 2.4e-17
+Parameter c_HbO2_in: 2e-17
+Parameter c_HbCO2_in: 6.4e-22
+Parameter u_in: 200
