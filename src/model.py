@@ -438,14 +438,14 @@ class PerfusionGasExchangeModel():
 
             # Create files for output
 
-            p_O2_file = File(self.folder_path+'/sbst/pO2.pvd')
-            p_CO2_file = File(self.folder_path+'/sbst/pCO2.pvd')
-            c_HbO2_file = File(self.folder_path+'/sbst/cHbO2.pvd')
-            c_HbCO2_file = File(self.folder_path+'/sbst/cHbCO2.pvd')
+            p_O2_file = File(self.folder_path+'/t/pO2.pvd')
+            p_CO2_file = File(self.folder_path+'/t/pCO2.pvd')
+            c_HbO2_file = File(self.folder_path+'/t/cHbO2.pvd')
+            c_HbCO2_file = File(self.folder_path+'/t/cHbCO2.pvd')
 
-        # Declare Dirichlet boundary conditions for (SBST)
+        # Declare Dirichlet boundary conditions for (T)
 
-        self.sbst_dbc = [
+        self.t_dbc = [
             DirichletBC(
                 self.M_h.sub(0), Constant(self.params['p_O2_in']), self.gamma_in
             ),
@@ -466,7 +466,7 @@ class PerfusionGasExchangeModel():
         # Solve variational problem
 
         solve(
-            G == 0, x, self.sbst_dbc,
+            G == 0, x, self.t_dbc,
             solver_parameters={"newton_solver": {
                 "relative_tolerance": 1E-8,
                 "absolute_tolerance": 1E-8#,
