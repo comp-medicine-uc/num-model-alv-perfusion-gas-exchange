@@ -18,7 +18,7 @@ Coded in Python 3.8.2 64-bit.
 
 - [`FEniCS`](https://fenicsproject.org/) 2019.1.0
 - `numpy`
-= `pyvista` & `pythreejs` for Jupyter Notebook VTK visualization
+- `pyvista` & `pythreejs` for Jupyter Notebook VTK visualization
 - `datetime`
 - `os`
 - `sys`
