@@ -19,7 +19,7 @@ path = os.path.join("../raw-data", folder)
 model = PerfusionGasExchangeModel(folder_path=path, params=params)
 print("Model initialised")
 model.import_mesh(
-    os.path.join("../raw-data", "TKD_newer.xml"), meshtype='tkd', type="xml", 
+    os.path.join("../raw-data/meshes", "tkd.xml"), meshtype='tkd', type="xml", 
     periodic=True
 )
 print("Mesh imported")
@@ -28,9 +28,7 @@ print("Mesh refined")
 print("Starting (P) simulation")
 model.sim_p(save=True, meshtype="tkd")
 print("(P) simulation done")
-print("Starting transport simulation")
+print("Starting (T) simulation")
 x = model.sim_sbst(hb=False, save=False)
 solution = model.sim_sbst(hb=True, save=True, guess=x)
-print("Airflow:", model.compute_airflow())
-print("Conservation:", model.compute_blood_conservation())
 print("Done")

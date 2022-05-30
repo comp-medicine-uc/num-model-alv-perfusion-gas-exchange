@@ -1,4 +1,4 @@
-'''Main file for alveolar perfusion and gas exchange simulations in spherical
+'''Main file for alveolar perfusion and gas exchange simulations in a sheet
 mesh.
 '''
 
@@ -14,23 +14,21 @@ from src.params import params
 
 
 print("Starting...")
-folder = "sphere_job"
+folder = "sheet-job"
 path = os.path.join("../raw-data", folder)
 model = PerfusionGasExchangeModel(folder_path=path, params=params)
 print("Model initialised")
-model.import_mesh(
-    os.path.join("../raw-data", "sphere_small.xml"), meshtype='sphere',
-    type="xml"
+model.generate_slab_mesh(
+    dims=(200, 6, 6), elems=(200, 6, 6), save=True, periodic=True, refined=True
 )
-print("Mesh imported")
+print("Mesh generated")
+model.mesh = dolfin.refine(model.mesh)
 model.mesh = dolfin.refine(model.mesh)
 print("Mesh refined")
-print("Starting (P) simulation")
-model.sim_p(save=True, meshtype="sphere")
-print("(P) simulation done")
-print("Starting transport simulation")
+print("Setting u")
+model.set_u(value=(800/3, 0, 0), save=True)
+print("u set")
+print("Starting (T)) simulation")
 x = model.sim_sbst(hb=False, save=False)
 solution = model.sim_sbst(hb=True, save=True, guess=x)
-print("Airflow:", model.compute_airflow())
-print("Conservation:", model.compute_blood_conservation())
 print("Done")
